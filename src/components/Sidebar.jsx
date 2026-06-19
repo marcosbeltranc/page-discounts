@@ -2,7 +2,7 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
-import { Tag, Package, LogOut, Gift } from 'lucide-react';
+import { Tag, Package, LogOut, Gift, User, Users } from 'lucide-react';
 
 export default function Sidebar({ onLogout }) {
     const pathname = usePathname();
@@ -13,6 +13,10 @@ export default function Sidebar({ onLogout }) {
         { name: 'Productos', href: '/admin/products', icon: Package },
         { name: 'Grupos de Productos', href: '/admin/product-groups', icon: Package },
         { name: 'Productos Promocionales', href: '/admin/products-promo', icon: Gift },
+        { name: 'Grupos de Productos Promocionales', href: '/admin/promotional-product-groups', icon: Gift },
+        { name: 'Clientes', href: '/admin/customer', icon: User },
+        { name: 'Grupos de Clientes', href: '/admin/customer-groups', icon: Users },
+        { name: 'Promociones', href: '/admin/promotions', icon: Tag },
         // { name: 'Productos Promocionales', href: '/admin/products', icon: Package },
     ];
 
@@ -36,7 +40,7 @@ export default function Sidebar({ onLogout }) {
                 <nav className="p-4 space-y-1.5 mt-4">
                     {menuItems.map((item) => {
                         const Icon = item.icon;
-                        const isActive = pathname.startsWith(item.href);
+                        const isActive = pathname === item.href;
                         return (
                             <Link
                                 key={item.href}
