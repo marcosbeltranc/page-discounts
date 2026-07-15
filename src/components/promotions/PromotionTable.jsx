@@ -22,6 +22,36 @@ export default function PromotionTable({ promotions, onRefresh, onEdit }) {
         { header: 'Código', accessorKey: 'code' },
         { header: 'Tipo', accessorKey: 'type' },
         {
+            header: 'Descripción',
+            accessorKey: 'description',
+            cell: ({ getValue }) => <span className="text-slate-600 truncate max-w-xs">{getValue() || '-'}</span>
+        },
+        {
+            header: 'Inicio',
+            accessorKey: 'start_at',
+            cell: ({ getValue }) => getValue() ? new Date(getValue()).toLocaleDateString() : '-'
+        },
+        {
+            header: 'Fin',
+            accessorKey: 'end_at',
+            cell: ({ getValue }) => {
+                const dateValue = getValue();
+                if (!dateValue) return '-';
+
+                const endDate = new Date(dateValue);
+                const now = new Date();
+
+                // Comparamos si la fecha de fin es menor a la fecha actual
+                const isExpired = endDate < now;
+
+                return (
+                    <span className={isExpired ? "text-red-600 font-bold" : "text-slate-600"}>
+                        {endDate.toLocaleDateString()}
+                    </span>
+                );
+            }
+        },
+        {
             header: 'Acciones',
             cell: ({ row }) => (
                 <div className="flex gap-2">

@@ -3,10 +3,103 @@
 import { useState, useEffect } from 'react';
 import { api } from '@/lib/api';
 
-const Field = ({ label, children }) => (<div className="space-y-1"> <label className="block text-xs font-semibold uppercase tracking-wide text-slate-500">
-    {label} </label>
-    {children} </div>
+const Field = ({ label, children }) => (
+    <div className="space-y-1">
+        <label className="block text-xs font-semibold uppercase tracking-wide text-slate-500">
+            {label}
+        </label>
+        {children}
+    </div>
 );
+
+const getResultArray = (res) => {
+    if (Array.isArray(res?.result)) return res.result;
+    if (Array.isArray(res?.data)) return res.data;
+    if (Array.isArray(res)) return res;
+
+    return [];
+};
+
+const getItemSku = (item) => {
+    return (
+        item?.sku ??
+        item?.SKU ??
+        item?.code ??
+        item?.item_code ??
+        item?.product_code ??
+        ''
+    );
+};
+
+const getItemName = (item) => {
+    return (
+        item?.name ??
+        item?.description ??
+        item?.product_name ??
+        item?.item_name ??
+        item?.title ??
+        'Sin nombre'
+    );
+};
+
+const getTargetTypeByOperation = (operationType) => {
+    switch (operationType) {
+        case 'ADD_PRODUCT':
+            return 'product';
+
+        case 'ADD_GIFT':
+            return 'gift';
+
+        case 'ADD_GROUP_PRODUCTS':
+            return 'product_group';
+
+        case 'ADD_GROUP_GIFT':
+            return 'gift_group';
+
+        case 'DISCOUNT':
+        default:
+            return 'discount';
+    }
+};
+
+const isGiftOperation = (operationType) => {
+    return [
+        'ADD_GIFT',
+        'ADD_GROUP_GIFT'
+    ].includes(operationType);
+};
+
+const isProductOperation = (operationType) => {
+    return [
+        'ADD_PRODUCT',
+        'ADD_GROUP_PRODUCTS'
+    ].includes(operationType);
+};
+
+const isIndividualOperation = (operationType) => {
+    return [
+        'ADD_PRODUCT',
+        'ADD_GIFT'
+    ].includes(operationType);
+};
+
+const isGroupOperation = (operationType) => {
+    return [
+        'ADD_GROUP_PRODUCTS',
+        'ADD_GROUP_GIFT'
+    ].includes(operationType);
+};
+
+const getEmptyAction = (promotionId) => ({
+    id: null,
+    promotion_id: promotionId,
+    operation_type: 'DISCOUNT',
+    target_type: '',
+    applicable_to: '',
+    only_in_cart: true,
+    is_lowest_price: false,
+    items_to_add: 0
+});
 
 export default function Step3({ promotionId, onFinish }) {
     const [groups, setGroups] = useState({
@@ -14,55 +107,155 @@ export default function Step3({ promotionId, onFinish }) {
         gifts: []
     });
 
-    const [actions, setActions] = useState([]);
-
-    const [action, setAction] = useState({
-        id: null,
-        promotion_id: promotionId,
-        operation_type: 'DISCOUNT',
-        target_type: 'product_group',
-        applicable_to: '',
-        only_in_cart: true,
-        is_lowest_price: false,
-        items_to_add: 0
+    const [items, setItems] = useState({
+        products: [],
+        gifts: []
     });
+
+    const [actions, setActions] = useState([]);
+    const [skuSearch, setSkuSearch] = useState('');
+
+    const [action, setAction] = useState(
+        getEmptyAction(promotionId)
+    );
 
     useEffect(() => {
         const fetchResources = async () => {
-            const [pRes, gRes, aRes] = await Promise.all([
-                api.get('/product-groups'),
-                api.get('/promotional-product-groups'),
-                api.get(`/promotion-actions?promotion_id=${promotionId}`)
-            ]);
+            try {
+                const [
+                    productGroupsRes,
+                    giftGroupsRes,
+                    productsRes,
+                    giftsRes,
+                    actionsRes
+                ] = await Promise.all([
+                    api.get('/product-groups'),
+                    api.get('/promotional-product-groups'),
+                    api.get('/products'),
+                    api.get('/promotional-products'),
+                    api.get(`/promotion-actions?promotion_id=${promotionId}`)
+                ]);
 
-            setGroups({
-                products: pRes.result || [],
-                gifts: gRes.result || []
-            });
+                setGroups({
+                    products: getResultArray(productGroupsRes),
+                    gifts: getResultArray(giftGroupsRes)
+                });
 
-            setActions(aRes.result || []);
+                setItems({
+                    products: getResultArray(productsRes),
+                    gifts: getResultArray(giftsRes)
+                });
+
+                setActions(getResultArray(actionsRes));
+            } catch (err) {
+                console.error(err);
+                alert('Error al cargar recursos de acciones');
+            }
         };
 
         fetchResources();
     }, [promotionId]);
 
     const resetForm = () => {
+        setAction(getEmptyAction(promotionId));
+        setSkuSearch('');
+    };
+
+    const handleOperationChange = (operationType) => {
+        const targetType = getTargetTypeByOperation(operationType);
+        const isGift = isGiftOperation(operationType);
+        const isProduct = isProductOperation(operationType);
+        const isDiscount = operationType === 'DISCOUNT';
+        console.log(operationType);
         setAction({
-            id: null,
-            promotion_id: promotionId,
-            operation_type: 'DISCOUNT',
-            target_type: 'product_group',
+            ...action,
+            operation_type: operationType,
+            target_type: targetType,
             applicable_to: '',
-            only_in_cart: true,
-            is_lowest_price: false,
-            items_to_add: 0
+            items_to_add: isDiscount ? 0 : 1,
+            only_in_cart: isProduct ? action.only_in_cart : true,
+            is_lowest_price: isProduct ? action.is_lowest_price : false
+        });
+
+        setSkuSearch('');
+    };
+
+    const handleSearchBySku = () => {
+        const sku = skuSearch.trim();
+
+        if (!sku) {
+            alert('Ingresa un SKU para buscar');
+            return;
+        }
+
+        const source =
+            action.target_type === 'gift'
+                ? items.gifts
+                : items.products;
+
+        const found = source.find(item =>
+            String(getItemSku(item)).toLowerCase() === sku.toLowerCase()
+        );
+
+        if (!found) {
+            alert('No se encontró un registro con ese SKU');
+            return;
+        }
+
+        setAction({
+            ...action,
+            applicable_to: found.id
         });
     };
 
-    const handleSaveAction = async () => {
-        const payload = { ...action };
+    const getSelectedItem = () => {
+        if (!action.applicable_to) return null;
 
-        if (payload.operation_type === 'ADD_GIFT') {
+        const source =
+            action.target_type === 'gift'
+                ? items.gifts
+                : items.products;
+
+        return source.find(item =>
+            String(item.id) === String(action.applicable_to)
+        );
+    };
+
+    const handleSaveAction = async () => {
+        console.log('action', action.operation_type);
+        const targetType = getTargetTypeByOperation(action.operation_type);
+        console.log('targetType', targetType);
+
+        const payload = {
+            ...action,
+            promotion_id: promotionId,
+            target_type: targetType || null,
+            applicable_to: action.applicable_to || null,
+            items_to_add: Number(action.items_to_add || 0)
+        };
+
+        console.log('operation_type', payload.operation_type);
+        console.log('payload', payload);
+
+        if (payload.operation_type !== 'DISCOUNT' && !payload.applicable_to) {
+            alert('Selecciona o busca el producto/regalo/grupo que aplica');
+            return;
+        }
+
+        if (payload.operation_type !== 'DISCOUNT' && payload.items_to_add < 1) {
+            alert('La cantidad a agregar debe ser mínimo 1');
+            return;
+        }
+
+        if (payload.operation_type === 'DISCOUNT') {
+            payload.target_type = 'discount';
+            payload.applicable_to = null;
+            payload.items_to_add = 0;
+            payload.only_in_cart = false;
+            payload.is_lowest_price = false;
+        }
+
+        if (isGiftOperation(payload.operation_type)) {
             payload.only_in_cart = false;
             payload.is_lowest_price = false;
         }
@@ -76,7 +269,12 @@ export default function Step3({ promotionId, onFinish }) {
 
                 setActions(
                     actions.map(a =>
-                        a.id === action.id ? action : a
+                        a.id === action.id
+                            ? {
+                                ...payload,
+                                id: action.id
+                            }
+                            : a
                     )
                 );
             } else {
@@ -115,32 +313,106 @@ export default function Step3({ promotionId, onFinish }) {
         }
     };
 
-    const isDiscount =
-        action.operation_type === 'DISCOUNT';
-    const isGift =
-        action.operation_type === 'ADD_GIFT';
+    const handleEdit = (selectedAction) => {
+        const normalizedAction = {
+            ...selectedAction,
+            target_type:
+                selectedAction.target_type ||
+                getTargetTypeByOperation(selectedAction.operation_type),
+            applicable_to: selectedAction.applicable_to ?? '',
+            items_to_add: selectedAction.items_to_add ?? 0,
+            only_in_cart: Boolean(selectedAction.only_in_cart),
+            is_lowest_price: Boolean(selectedAction.is_lowest_price)
+        };
 
-    const isProduct =
-        action.operation_type === 'ADD_PRODUCT';
+        setAction(normalizedAction);
+
+        const isIndividual = isIndividualOperation(
+            normalizedAction.operation_type
+        );
+
+        if (isIndividual && normalizedAction.applicable_to) {
+            const source =
+                normalizedAction.target_type === 'gift'
+                    ? items.gifts
+                    : items.products;
+
+            const found = source.find(item =>
+                String(item.id) === String(normalizedAction.applicable_to)
+            );
+
+            setSkuSearch(found ? getItemSku(found) : '');
+        } else {
+            setSkuSearch('');
+        }
+    };
+
     const getActionLabel = (type) => {
         switch (type) {
             case 'DISCOUNT':
                 return 'Descuento';
 
             case 'ADD_PRODUCT':
-                return 'Agregar Producto';
+                return 'Agregar Producto Individual';
 
             case 'ADD_GIFT':
-                return 'Agregar Regalo';
+                return 'Agregar Regalo Individual';
+
+            case 'ADD_GROUP_PRODUCTS':
+                return 'Agregar Productos de Grupo';
+
+            case 'ADD_GROUP_GIFT':
+                return 'Agregar Regalos de Grupo';
 
             default:
                 return type;
         }
     };
 
-    const getGroupName = (a) => {
+    const getTargetLabel = (targetType) => {
+        switch (targetType) {
+            case 'product':
+                return 'Producto';
+
+            case 'gift':
+                return 'Regalo';
+
+            case 'product_group':
+                return 'Grupo de Productos';
+
+            case 'gift_group':
+                return 'Grupo de Regalos';
+
+            default:
+                return 'No aplica';
+        }
+    };
+
+    const getTargetName = (a) => {
         if (!a.applicable_to) {
             return 'No definido';
+        }
+
+        if (a.target_type === 'product' || a.target_type === 'gift') {
+            const source =
+                a.target_type === 'gift'
+                    ? items.gifts
+                    : items.products;
+
+            const item = source.find(
+                p => String(p.id) === String(a.applicable_to)
+            );
+
+            if (!item) {
+                return `ID ${a.applicable_to}`;
+            }
+
+            const sku = getItemSku(item);
+            const name = getItemName(item);
+
+            return sku
+                ? `${name} - SKU: ${sku}`
+                : name;
         }
 
         const source =
@@ -152,8 +424,14 @@ export default function Step3({ promotionId, onFinish }) {
             g => String(g.id) === String(a.applicable_to)
         );
 
-        return group?.group || `ID ${a.applicable_to}`;
+        return group?.group || group?.name || `ID ${a.applicable_to}`;
     };
+
+    const isDiscount = action.operation_type === 'DISCOUNT';
+    const isIndividual = isIndividualOperation(action.operation_type);
+    const isGroup = isGroupOperation(action.operation_type);
+    const showProductOptions = isProductOperation(action.operation_type);
+    const selectedItem = getSelectedItem();
 
     return (
         <div className="space-y-6">
@@ -188,38 +466,46 @@ export default function Step3({ promotionId, onFinish }) {
                                 </strong>
                             </div>
 
-                            {!(
-                                a.operation_type === 'DISCOUNT'
-                            ) && (
-                                    <>
-                                        <div className="text-sm text-slate-500">
-                                            Grupo:
-                                            <strong className="text-slate-700">
-                                                {' '}
-                                                {getGroupName(a)}
-                                            </strong>
-                                        </div>
+                            {a.operation_type !== 'DISCOUNT' && (
+                                <>
+                                    <div className="text-sm text-slate-500">
+                                        Objetivo:
+                                        <strong className="text-slate-700">
+                                            {' '}
+                                            {getTargetLabel(a.target_type)}
+                                        </strong>
+                                    </div>
 
-                                        <div className="text-sm text-slate-500">
-                                            Cantidad:
-                                            <strong className="text-slate-700">
-                                                {' '}
-                                                {a.items_to_add}
-                                            </strong>
-                                        </div>
-                                    </>
-                                )}
+                                    <div className="text-sm text-slate-500">
+                                        Aplica a:
+                                        <strong className="text-slate-700">
+                                            {' '}
+                                            {getTargetName(a)}
+                                        </strong>
+                                    </div>
+
+                                    <div className="text-sm text-slate-500">
+                                        Cantidad:
+                                        <strong className="text-slate-700">
+                                            {' '}
+                                            {a.items_to_add}
+                                        </strong>
+                                    </div>
+                                </>
+                            )}
                         </div>
 
                         <div className="flex gap-4">
                             <button
-                                onClick={() => setAction(a)}
+                                type="button"
+                                onClick={() => handleEdit(a)}
                                 className="text-indigo-600 font-medium hover:underline"
                             >
                                 Editar
                             </button>
 
                             <button
+                                type="button"
                                 onClick={() =>
                                     handleDelete(a.id)
                                 }
@@ -244,83 +530,126 @@ export default function Step3({ promotionId, onFinish }) {
                     <select
                         value={action.operation_type}
                         className="w-full p-3 border rounded-xl"
-                        onChange={(e) => {
-                            const operationType = e.target.value;
-
-                            setAction({
-                                ...action,
-                                operation_type: operationType,
-                                target_type:
-                                    operationType === 'ADD_GIFT'
-                                        ? 'gift_group'
-                                        : 'product_group',
-                                applicable_to: '',
-
-                                only_in_cart:
-                                    operationType === 'ADD_GIFT'
-                                        ? false
-                                        : action.only_in_cart,
-
-                                is_lowest_price:
-                                    operationType === 'ADD_GIFT'
-                                        ? false
-                                        : action.is_lowest_price
-                            });
-                        }}
+                        onChange={(e) =>
+                            handleOperationChange(e.target.value)
+                        }
                     >
                         <option value="DISCOUNT">
                             Descuento
                         </option>
 
                         <option value="ADD_PRODUCT">
-                            Agregar Producto
+                            Agregar Producto Individual
                         </option>
 
                         <option value="ADD_GIFT">
-                            Agregar Regalo
+                            Agregar Regalo Individual
                         </option>
+
+                        <option value="ADD_GROUP_PRODUCTS">
+                            Agregar Productos de Grupo
+                        </option>
+
+                        {/* <option value="ADD_GROUP_GIFT">
+                            Agregar Regalos de Grupo
+                        </option> */}
                     </select>
                 </Field>
 
                 {!isDiscount && (
                     <>
-                        <Field
-                            label={
-                                action.operation_type ===
-                                    'ADD_GIFT'
-                                    ? 'Grupo de Regalos'
-                                    : 'Grupo de Productos'
-                            }
-                        >
-                            <select
-                                value={action.applicable_to}
-                                className="w-full p-3 border rounded-xl"
-                                onChange={(e) =>
-                                    setAction({
-                                        ...action,
-                                        applicable_to:
-                                            e.target.value
-                                    })
+                        <Field label="Tipo de Objetivo">
+                            <input
+                                className="w-full p-3 border rounded-xl bg-slate-100 text-slate-500"
+                                value={getTargetLabel(action.target_type)}
+                                disabled
+                            />
+                        </Field>
+
+                        {isGroup && (
+                            <Field
+                                label={
+                                    action.target_type === 'gift_group'
+                                        ? 'Grupo de Regalos'
+                                        : 'Grupo de Productos'
                                 }
                             >
-                                <option value="">
-                                    Selecciona un grupo
-                                </option>
-
-                                {(action.target_type ===
-                                    'gift_group'
-                                    ? groups.gifts
-                                    : groups.products
-                                ).map(g => (
-                                    <option
-                                        key={g.id}
-                                        value={g.id}
-                                    >
-                                        {g.group}
+                                <select
+                                    value={action.applicable_to}
+                                    className="w-full p-3 border rounded-xl"
+                                    onChange={(e) =>
+                                        setAction({
+                                            ...action,
+                                            applicable_to:
+                                                e.target.value
+                                        })
+                                    }
+                                >
+                                    <option value="">
+                                        Selecciona un grupo
                                     </option>
-                                ))}
-                            </select>
-                        </Field>
+
+                                    {(action.target_type === 'gift_group'
+                                        ? groups.gifts
+                                        : groups.products
+                                    ).map(g => (
+                                        <option
+                                            key={g.id}
+                                            value={g.id}
+                                        >
+                                            {g.group || g.name}
+                                        </option>
+                                    ))}
+                                </select>
+                            </Field>
+                        )}
+
+                        {isIndividual && (
+                            <div className="space-y-3">
+                                <Field
+                                    label={
+                                        action.target_type === 'gift'
+                                            ? 'Buscar Regalo por SKU'
+                                            : 'Buscar Producto por SKU'
+                                    }
+                                >
+                                    <div className="flex gap-3">
+                                        <input
+                                            className="w-full p-3 border rounded-xl"
+                                            value={skuSearch}
+                                            placeholder="Ingresa el SKU"
+                                            onChange={(e) =>
+                                                setSkuSearch(e.target.value)
+                                            }
+                                        />
+
+                                        <button
+                                            type="button"
+                                            onClick={handleSearchBySku}
+                                            className="px-5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-bold transition"
+                                        >
+                                            Buscar
+                                        </button>
+                                    </div>
+                                </Field>
+
+                                {selectedItem && (
+                                    <div className="p-4 bg-white border rounded-xl text-sm">
+                                        <div className="font-semibold text-slate-800">
+                                            Seleccionado:
+                                        </div>
+
+                                        <div className="text-slate-600">
+                                            {getItemName(selectedItem)}
+                                        </div>
+
+                                        <div className="text-slate-500">
+                                            SKU: {getItemSku(selectedItem)}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        )}
 
                         <Field label="Cantidad a Agregar">
                             <input
@@ -338,7 +667,7 @@ export default function Step3({ promotionId, onFinish }) {
                             />
                         </Field>
 
-                        {isProduct && (
+                        {showProductOptions && (
                             <div className="space-y-3">
                                 <label className="flex items-center gap-3 text-sm">
                                     <input
@@ -377,6 +706,7 @@ export default function Step3({ promotionId, onFinish }) {
                 )}
 
                 <button
+                    type="button"
                     onClick={handleSaveAction}
                     className="w-full bg-slate-800 hover:bg-slate-900 text-white py-3 rounded-xl text-sm font-bold transition"
                 >
@@ -387,6 +717,7 @@ export default function Step3({ promotionId, onFinish }) {
 
                 {action.id && (
                     <button
+                        type="button"
                         onClick={resetForm}
                         className="w-full text-slate-500 text-sm hover:underline"
                     >
@@ -396,6 +727,7 @@ export default function Step3({ promotionId, onFinish }) {
             </div>
 
             <button
+                type="button"
                 onClick={onFinish}
                 className="w-full bg-green-600 hover:bg-green-700 text-white py-4 rounded-xl font-bold transition"
             >
@@ -403,5 +735,4 @@ export default function Step3({ promotionId, onFinish }) {
             </button>
         </div>
     );
-
 }

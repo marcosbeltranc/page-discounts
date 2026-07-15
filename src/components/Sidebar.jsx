@@ -13,7 +13,7 @@ export default function Sidebar({ onLogout }) {
         { name: 'Productos', href: '/admin/products', icon: Package },
         { name: 'Grupos de Productos', href: '/admin/product-groups', icon: Package },
         { name: 'Productos Promocionales', href: '/admin/products-promo', icon: Gift },
-        { name: 'Grupos de Productos Promocionales', href: '/admin/promotional-product-groups', icon: Gift },
+        // { name: 'Grupos de Productos Promocionales', href: '/admin/promotional-product-groups', icon: Gift },
         { name: 'Clientes', href: '/admin/customer', icon: User },
         { name: 'Grupos de Clientes', href: '/admin/customer-groups', icon: Users },
         { name: 'Promociones', href: '/admin/promotions', icon: Tag },
@@ -29,8 +29,8 @@ export default function Sidebar({ onLogout }) {
                         <Image
                             src="/images/promo.png"
                             alt="Logo"
-                            width={150}
-                            height={150}
+                            width={300}
+                            height={300}
                             priority
                         />
                     </div>

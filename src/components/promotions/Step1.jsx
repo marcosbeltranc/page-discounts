@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { api } from '@/lib/api';
 
 const Field = ({ label, children }) => (<div className="space-y-1"> <label className="block text-xs font-semibold uppercase tracking-wide text-slate-500">
@@ -9,31 +9,34 @@ const Field = ({ label, children }) => (<div className="space-y-1"> <label class
 );
 
 export default function Step1({ data, onNext }) {
-    const [form, setForm] = useState(
-        data || {
-            name: '',
-            description: '',
-            code: '',
-            type: 'discount',
+    const [form, setForm] = useState({
+        name: '',
+        description: '',
+        code: '',
+        type: 'discount',
+        start_at: '',
+        end_at: '',
+        usage_limit: '',
+        min_amount: 0,
+        min_quantity: 1,
+        is_combinable: false,
+        include_tax: false,
+        discount_type: 'percentage',
+        discount_amount: '',
+        discount_limit: '',
+        active: true
+    });
 
-
-            start_at: data?.start_at ? data.start_at.substring(0, 16) : '',
-            end_at: data?.end_at ? data.end_at.substring(0, 16) : '',
-
-            usage_limit: '',
-            min_amount: 0,
-            min_quantity: 1,
-
-            is_combinable: false,
-            include_tax: false,
-
-            discount_type: 'percentage',
-            discount_amount: '',
-            discount_limit: '',
-
-            active: false
+    // 3. Usa useEffect para actualizar el estado cuando 'data' cambie
+    useEffect(() => {
+        if (data) {
+            setForm({
+                ...data,
+                start_at: data.start_at ? data.start_at.substring(0, 16) : '',
+                end_at: data.end_at ? data.end_at.substring(0, 16) : '',
+            });
         }
-    );
+    }, [data]);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -94,7 +97,7 @@ export default function Step1({ data, onNext }) {
                     <Field label="Código">
                         <input
                             className="w-full p-3 border rounded-xl"
-                            value={form.code}
+                            value={form.code ?? ''}
                             onChange={(e) =>
                                 setForm({
                                     ...form,
