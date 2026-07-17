@@ -10,7 +10,7 @@ export default function PromoProductForm({
     onCancel
 }) {
     return (
-        <div className="lg:col-span-5 bg-white/70 backdrop-blur-sm border border-white/80 rounded-2xl p-6 shadow-md flex flex-col justify-between">
+        <div className="lg:col-span-5 w-full bg-white/70 backdrop-blur-sm border border-white/80 rounded-2xl p-6 shadow-md flex flex-col justify-between">
             <form onSubmit={onSubmit} className="space-y-5 w-full">
                 <div className="flex items-center gap-3 mb-2">
                     <button type="button" onClick={onCancel} className="p-2 bg-slate-50 hover:bg-slate-100 text-slate-500 hover:text-slate-800 border border-slate-200 rounded-xl transition-all">
@@ -56,7 +56,7 @@ export default function PromoProductForm({
                         >
                             <option value="folleto">Folleto Informativo</option>
                             <option value="muestra">Muestra Médica</option>
-                            <option value="mercancia">Mercancía Corporativa (POP)</option>
+                            <option value="mercancia">Mercancía Corporativa</option>
                         </select>
                     </div>
 
@@ -65,9 +65,10 @@ export default function PromoProductForm({
                         <div className="relative">
                             <input
                                 type="number"
-                                value={formData.stock_disponible}
+                                // value={formData.stock_disponible}
+                                value={formData.stock_disponible === 0 ? '' : formData.stock_disponible}
                                 onChange={(e) => setFormData({ ...formData, stock_disponible: parseInt(e.target.value) || 0 })}
-                                placeholder="0"
+                                placeholder="1"
                                 className="w-full bg-white border border-slate-200 rounded-xl pl-8 pr-3 py-2.5 text-xs font-mono font-bold text-slate-800 focus:outline-none focus:border-amber-500 shadow-inner"
                                 required
                             />
@@ -86,7 +87,7 @@ export default function PromoProductForm({
                         onChange={(e) => setFormData({ ...formData, activo: e.target.checked })}
                         className="w-4 h-4 text-amber-600 border-slate-300 bg-white rounded focus:ring-amber-500 cursor-pointer"
                     />
-                    <label htmlFor="activo" className="text-xs font-bold text-slate-600 cursor-pointer select-none">Habilitar asignación en pedidos de la intranet</label>
+                    <label htmlFor="activo" className="text-xs font-bold text-slate-600 cursor-pointer select-none">Activo</label>
                 </div>
 
                 <div className="flex justify-end gap-3 pt-4 border-t border-slate-100 mt-6">

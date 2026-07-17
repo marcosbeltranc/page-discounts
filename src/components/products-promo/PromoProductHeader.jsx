@@ -3,20 +3,20 @@ import { BadgePercent, Plus } from 'lucide-react';
 
 export default function PromoProductHeader({ view, onCreateClick }) {
     return (
-        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-5 border-b border-white/60">
-            <div>
+        <div className="flex flex-col sm:flex-row justify-end items-start sm:items-center gap-4 pb-5">
+            {/* <div>
                 <div className="flex items-center gap-3">
                     <div className="p-2.5 bg-amber-600/10 rounded-xl border border-amber-500/20 text-amber-600 shadow-sm">
                         <BadgePercent size={24} />
                     </div>
                     <div>
                         <h1 className="text-2xl font-bold tracking-tight text-slate-800">
-                            Material Promocional y POP
+                            Material Promocional
                         </h1>
-                        <p className="text-sm text-slate-500 mt-0.5">Gestión y control de inventario para muestras médicas, folletos y mercancía corporativa.</p>
+                        <p className="text-sm text-slate-500 mt-0.5">Gestión y control de inventario para material promocional.</p>
                     </div>
                 </div>
-            </div>
+            </div> */}
 
             {view === 'list' && (
                 <button

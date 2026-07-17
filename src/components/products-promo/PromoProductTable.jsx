@@ -34,7 +34,7 @@ export default function PromoProductTable({
                         onClick={() => setActiveTab('muestra')}
                         className={`px-4 py-2 rounded-lg text-xs font-bold transition-all whitespace-nowrap ${activeTab === 'muestra' ? 'bg-white text-emerald-600 shadow-sm' : 'text-slate-500 hover:text-emerald-600'}`}
                     >
-                        Muestras Médicas ({promos.filter(p => p.tipo === 'muestra').length})
+                        Muestras ({promos.filter(p => p.tipo === 'muestra').length})
                     </button>
                     <button
                         onClick={() => setActiveTab('mercancia')}
@@ -96,8 +96,8 @@ export default function PromoProductTable({
                                         </div>
                                         <div className="flex flex-col items-end gap-1 shrink-0">
                                             <span className={`px-2 py-0.5 rounded-md text-[9px] font-bold uppercase tracking-wider border ${item.tipo === 'folleto' ? 'bg-indigo-50 text-indigo-600 border-indigo-100' :
-                                                    item.tipo === 'muestra' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' :
-                                                        'bg-amber-50 text-amber-600 border-amber-100'
+                                                item.tipo === 'muestra' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' :
+                                                    'bg-amber-50 text-amber-600 border-amber-100'
                                                 }`}>
                                                 {item.tipo}
                                             </span>
@@ -112,7 +112,7 @@ export default function PromoProductTable({
                                         }`}>
                                         <div className="flex items-center gap-2">
                                             <Box size={14} className={isStockLow ? 'text-rose-500' : 'text-slate-400'} />
-                                            <span className="text-xs font-bold text-slate-500">Stock en Almacén:</span>
+                                            <span className="text-xs font-bold text-slate-500">Disponibilidad:</span>
                                         </div>
                                         <span className={`font-mono text-sm font-bold ${isStockLow ? 'text-rose-600' : 'text-slate-800'}`}>
                                             {item.stock_disponible.toLocaleString()} pzas

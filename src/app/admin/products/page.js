@@ -31,7 +31,6 @@ export default function NormalProductsPage() {
         try {
             setLoading(true);
             setErrorMsg('');
-            // Apunta a tu ProductController.php -> get()
             const response = await api.get('/products');
             const resData = unwrapResponse(response);
 
@@ -40,7 +39,7 @@ export default function NormalProductsPage() {
                 return;
             }
 
-            if (resData.error) {
+            if (resData.error && resData.error !== false) {
                 setErrorMsg(resData.result || 'Error al cargar los productos.');
                 setProducts([]);
                 return;

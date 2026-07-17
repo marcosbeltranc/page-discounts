@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { api } from '@/lib/api';
+import { toast } from 'sonner';
 
 const Field = ({ label, children }) => (<div className="space-y-1"> <label className="block text-xs font-semibold uppercase tracking-wide text-slate-500">
     {label} </label>
@@ -22,7 +23,7 @@ export default function Step1({ data, onNext }) {
         is_combinable: false,
         include_tax: false,
         discount_type: 'percentage',
-        discount_amount: '',
+        discount_amount: 0,
         discount_limit: '',
         active: true
     });
@@ -34,12 +35,33 @@ export default function Step1({ data, onNext }) {
                 ...data,
                 start_at: data.start_at ? data.start_at.substring(0, 16) : '',
                 end_at: data.end_at ? data.end_at.substring(0, 16) : '',
+                discount_amount: Number(data.discount_amount || 0),
             });
         }
     }, [data]);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+
+        // 1. Validaciones
+        const now = new Date();
+        const start = new Date(form.start_at);
+        const end = new Date(form.end_at);
+
+        if (!form.name || !form.start_at || !form.end_at) {
+            toast.error('El nombre y las fechas son obligatorios');
+            return;
+        }
+
+        // if (start < now) {
+        //     toast.error('La fecha de inicio no puede estar en el pasado');
+        //     return;
+        // }
+
+        if (end <= start) {
+            toast.error('La fecha de fin debe ser posterior a la fecha de inicio');
+            return;
+        }
 
         const isEdit = !!data?.id;
         const url = isEdit
@@ -50,10 +72,77 @@ export default function Step1({ data, onNext }) {
 
         try {
             const response = await method(url, form);
-            onNext(response.result.id);
+            if (response.error) {
+                toast.error(response.result);
+                return;
+            }
+
+            const promotionId = response.result.id;
+            const discountAmount = Number(form.discount_amount || 0);
+
+            // 2. Busca si ya existe una action de tipo DISCOUNT para esta promoción
+            //    (esto evita duplicarla en cada edit)
+            let existingDiscountAction = null;
+
+            if (isEdit) {
+                try {
+                    const actionsRes = await api.get(
+                        `/promotion-actions?promotion_id=${promotionId}`
+                    );
+
+                    const existingActions = Array.isArray(actionsRes?.result)
+                        ? actionsRes.result
+                        : Array.isArray(actionsRes)
+                            ? actionsRes
+                            : [];
+
+                    existingDiscountAction = existingActions.find(
+                        (a) => a.operation_type === 'DISCOUNT'
+                    ) || null;
+                } catch (err) {
+                    console.error(err);
+                    console.warn('No se pudieron obtener las acciones existentes de la promoción.');
+                }
+            }
+
+            if (discountAmount > 0) {
+                const actionPayload = {
+                    id: existingDiscountAction?.id ?? null,
+                    promotion_id: promotionId,
+                    operation_type: 'DISCOUNT',
+                    target_type: 'discount',
+                    applicable_to: null,
+                    only_in_cart: false,
+                    is_lowest_price: false,
+                    items_to_add: 0
+                };
+
+                const ruleRes = existingDiscountAction
+                    ? await api.put(
+                        `/promotion-actions/update/${existingDiscountAction.id}`,
+                        actionPayload
+                    )
+                    : await api.post('/promotion-actions/create', actionPayload);
+
+                if (ruleRes.error) {
+                    console.warn('La promoción se guardó, pero hubo un problema al guardar la regla automática.');
+                }
+            } else if (existingDiscountAction) {
+                // 3. Si el descuento se puso en 0, elimina la action asociada
+                try {
+                    await api.delete(
+                        `/promotion-actions/delete/${existingDiscountAction.id}`
+                    );
+                } catch (err) {
+                    console.error(err);
+                    console.warn('La promoción se guardó, pero hubo un problema al eliminar la regla automática.');
+                }
+            }
+
+            onNext(response.result.id, { ...form, ...response.result });
         } catch (err) {
             console.error(err);
-            alert('Error al guardar la promoción');
+            toast.error('Error al guardar la promoción');
         }
     };
 
@@ -107,7 +196,20 @@ export default function Step1({ data, onNext }) {
                         />
                     </Field>
 
-                    <Field label="Tipo de Promoción">
+                    <Field label="Límite de Usos">
+                        <input
+                            type="number"
+                            className="w-full p-3 border rounded-xl"
+                            value={form.usage_limit}
+                            onChange={(e) =>
+                                setForm({
+                                    ...form,
+                                    usage_limit: e.target.value
+                                })
+                            }
+                        />
+                    </Field>
+                    {/* <Field label="Tipo de Promoción">
                         <select
                             className="w-full p-3 border rounded-xl"
                             value={form.type}
@@ -130,7 +232,7 @@ export default function Step1({ data, onNext }) {
                                 Producto
                             </option>
                         </select>
-                    </Field>
+                    </Field> */}
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
@@ -201,7 +303,7 @@ export default function Step1({ data, onNext }) {
                                 onChange={(e) =>
                                     setForm({
                                         ...form,
-                                        discount_amount: e.target.value
+                                        discount_amount: e.target.value === '' ? 0 : Number(e.target.value)
                                     })
                                 }
                             />
@@ -223,19 +325,6 @@ export default function Step1({ data, onNext }) {
                             />
                         </Field>
 
-                        <Field label="Límite de Usos">
-                            <input
-                                type="number"
-                                className="w-full p-3 border rounded-xl"
-                                value={form.usage_limit}
-                                onChange={(e) =>
-                                    setForm({
-                                        ...form,
-                                        usage_limit: e.target.value
-                                    })
-                                }
-                            />
-                        </Field>
                     </div>
 
                     <label className="flex items-center gap-3 text-sm">

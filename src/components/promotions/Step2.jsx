@@ -8,7 +8,8 @@ const Field = ({ label, children }) => (<div className="space-y-1"> <label class
     {children} </div>
 );
 
-export default function Step2({ promotionId, onNext }) {
+export default function Step2({ promotionId, onNext, data }) {
+    console.log('data', data);
     const [groups, setGroups] = useState({
         users: [],
         products: []

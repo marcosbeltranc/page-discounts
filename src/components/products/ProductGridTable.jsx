@@ -53,10 +53,10 @@ export default function ProductGridTable({ products, loading, searchTerm }) {
                                     )}
                                 </div>
                                 <span className={`px-2 py-0.5 rounded-md text-[9px] font-bold uppercase tracking-widest ${isProductActive
-                                        ? 'bg-emerald-50 text-emerald-600 border border-emerald-200/60'
-                                        : 'bg-slate-100 text-slate-400 border border-slate-200'
+                                    ? 'bg-emerald-50 text-emerald-600 border border-emerald-200/60'
+                                    : 'bg-slate-100 text-slate-400 border border-slate-200'
                                     }`}>
-                                    {isProductActive ? 'Visb' : 'Oculto'}
+                                    {isProductActive ? 'Activo' : 'Inactivo'}
                                 </span>
                             </div>
 
@@ -77,13 +77,13 @@ export default function ProductGridTable({ products, loading, searchTerm }) {
                                 <div>
                                     <span className="block text-[9px] font-bold text-slate-400 uppercase tracking-wider">P. Público + IVA</span>
                                     <span className="text-sm font-black text-slate-800">
-                                        {formatCurrency(product.precio_publico_con_iva || product.precio_con_iva)}
+                                        {formatCurrency(product.precio_publico_con_iva)}
                                     </span>
                                 </div>
                                 <div className="text-right">
-                                    <span className="block text-[9px] font-medium text-slate-400 uppercase tracking-wider">Base Neto</span>
+                                    <span className="block text-[9px] font-medium text-slate-400 uppercase tracking-wider">P. Base + IVA</span>
                                     <span className="text-xs font-semibold text-slate-500">
-                                        {formatCurrency(product.precio)}
+                                        {formatCurrency(product.precio_con_iva)}
                                     </span>
                                 </div>
                             </div>
@@ -99,7 +99,7 @@ export default function ProductGridTable({ products, loading, searchTerm }) {
                             </div>
                             {product.sku && (
                                 <div className="flex justify-between items-center">
-                                    <span className="text-[10px] font-bold text-slate-400 font-sans uppercase">SKU Canal</span>
+                                    <span className="text-[10px] font-bold text-slate-400 font-sans uppercase">SKU</span>
                                     <span className={`px-1.5 py-0.5 rounded ${isSkuMatched ? 'bg-amber-500 text-white font-black' : 'text-slate-500 bg-slate-50'}`}>
                                         {product.sku}
                                     </span>

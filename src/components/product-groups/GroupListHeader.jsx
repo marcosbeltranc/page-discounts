@@ -3,8 +3,8 @@ import { Layers, Plus } from 'lucide-react';
 
 export default function GroupListHeader({ view, onCreateClick }) {
     return (
-        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-5 border-b border-white/60">
-            <div>
+        <div className="flex flex-col sm:flex-row justify-end items-start sm:items-center gap-4 pb-5">
+            {/* <div>
                 <div className="flex items-center gap-3">
                     <div className="p-2.5 bg-indigo-600/10 rounded-xl border border-indigo-500/20 text-indigo-600 shadow-sm">
                         <Layers size={24} />
@@ -16,7 +16,7 @@ export default function GroupListHeader({ view, onCreateClick }) {
                         <p className="text-sm text-slate-500 mt-0.5">Agrupaciones estructurales de SKUs para promociones y analítica.</p>
                     </div>
                 </div>
-            </div>
+            </div> */}
 
             {view === 'list' && (
                 <button

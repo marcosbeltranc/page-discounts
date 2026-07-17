@@ -90,6 +90,15 @@ const isGroupOperation = (operationType) => {
     ].includes(operationType);
 };
 
+// El monto se muestra como "10%" si es porcentaje, o "$10" si es monto fijo.
+const formatDiscountValue = (amount, discountType) => {
+    const value = Number(amount || 0);
+
+    return discountType === 'percentage'
+        ? `${value}%`
+        : `$${value}`;
+};
+
 const getEmptyAction = (promotionId) => ({
     id: null,
     promotion_id: promotionId,
@@ -97,11 +106,12 @@ const getEmptyAction = (promotionId) => ({
     target_type: '',
     applicable_to: '',
     only_in_cart: true,
-    is_lowest_price: false,
+    is_lowest_price: true,
     items_to_add: 0
 });
 
-export default function Step3({ promotionId, onFinish }) {
+export default function Step3({ promotionId, onFinish, data }) {
+    console.log('data step 3', data);
     const [groups, setGroups] = useState({
         products: [],
         gifts: []
@@ -493,27 +503,55 @@ export default function Step3({ promotionId, onFinish }) {
                                     </div>
                                 </>
                             )}
+                            {a.operation_type === 'DISCOUNT' && (
+                                <>
+                                    <div className="text-sm text-slate-500">
+                                        Monto:
+                                        <strong className="text-slate-700">
+                                            {' '}
+                                            {formatDiscountValue(
+                                                data?.discount_amount,
+                                                data?.discount_type
+                                            )}
+                                        </strong>
+                                    </div>
+
+                                    {Number(data?.discount_limit) > 0 && (
+                                        <div className="text-sm text-slate-500">
+                                            Límite de descuento:
+                                            <strong className="text-slate-700">
+                                                {' '}
+                                                ${Number(data.discount_limit)}
+                                            </strong>
+                                        </div>
+                                    )}
+                                </>
+                            )}
                         </div>
 
-                        <div className="flex gap-4">
-                            <button
-                                type="button"
-                                onClick={() => handleEdit(a)}
-                                className="text-indigo-600 font-medium hover:underline"
-                            >
-                                Editar
-                            </button>
+                        {a.operation_type !== 'DISCOUNT' && (
+                            <>
+                                <div className="flex gap-4">
+                                    <button
+                                        type="button"
+                                        onClick={() => handleEdit(a)}
+                                        className="text-indigo-600 font-medium hover:underline"
+                                    >
+                                        Editar
+                                    </button>
 
-                            <button
-                                type="button"
-                                onClick={() =>
-                                    handleDelete(a.id)
-                                }
-                                className="text-red-500 font-medium hover:underline"
-                            >
-                                Eliminar
-                            </button>
-                        </div>
+                                    <button
+                                        type="button"
+                                        onClick={() =>
+                                            handleDelete(a.id)
+                                        }
+                                        className="text-red-500 font-medium hover:underline"
+                                    >
+                                        Eliminar
+                                    </button>
+                                </div>
+                            </>
+                        )}
                     </div>
                 ))}
             </div>
@@ -534,9 +572,9 @@ export default function Step3({ promotionId, onFinish }) {
                             handleOperationChange(e.target.value)
                         }
                     >
-                        <option value="DISCOUNT">
+                        {/* <option value="DISCOUNT">
                             Descuento
-                        </option>
+                        </option> */}
 
                         <option value="ADD_PRODUCT">
                             Agregar Producto Individual

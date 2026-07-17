@@ -31,11 +31,11 @@ export default function PromotionsPage() {
     };
 
     return (
-        <div className="max-w-6xl mx-auto p-6">
+        <div className="max-w-7xl mx-auto">
             {view === 'list' ? (
                 <div className="space-y-6">
-                    <div className="flex justify-between items-center">
-                        <h1 className="text-2xl font-bold">Promociones</h1>
+                    <div className="flex justify-end">
+                        {/* <h1 className="text-2xl font-bold">Promociones</h1> */}
                         <button
                             onClick={() => { setEditingPromotion(null); setView('edit'); }}
                             className="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-bold"

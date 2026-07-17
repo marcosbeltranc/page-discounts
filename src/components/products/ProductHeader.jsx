@@ -2,40 +2,50 @@
 import { useState } from 'react';
 import { api } from '@/lib/api';
 import { Package, RefreshCw, DatabaseZap, Loader2 } from 'lucide-react';
+import { toast } from 'sonner';
 
 export default function ProductHeader({ onRefresh, loading }) {
     const [syncingSap, setSyncingSap] = useState(false);
 
+    const unwrapResponse = (res) => {
+        if (!res) return null;
+        return res.data !== undefined ? res.data : res;
+    };
+
     const handleSyncSap = async () => {
-        if (!window.confirm('¿Deseas iniciar la sincronización masiva desde SAP Hana? Esto actualizará precios, estatus y auto-agrupará marcas y laboratorios.')) {
-            return;
-        }
+        toast('¿Iniciar la sincronización?', {
+            description: 'Esto actualizará tu lista de productos desde SAP',
+            action: {
+                label: 'Confirmar',
+                onClick: async () => {
+                    // 2. Aquí movemos toda la lógica de ejecución del sync
+                    try {
+                        setSyncingSap(true);
+                        const response = await api.post('/products/sync');
+                        const resData = unwrapResponse(response);
 
-        try {
-            setSyncingSap(true);
-
-            // Reemplaza esto por la ruta exacta que apunta a tu método de sincronización en Laravel
-            // Ej: Route::post('/products/sync', [ProductController::class, 'sync']);
-            const response = await api.post('/products/sync');
-
-            if (response.data && !response.data.error) {
-                alert('Sincronización completada con éxito: ' + response.data.result);
-                // Una vez sincronizado el backend con SAP, refrescamos la pantalla local
-                onRefresh();
-            } else {
-                alert('Error al sincronizar con SAP: ' + (response.data?.result || 'Error desconocido'));
+                        if (resData.error === false) {
+                            toast.success('Sincronización completada', { description: resData.result });
+                            onRefresh();
+                        } else {
+                            toast.error('Error al sincronizar', { description: resData.result });
+                        }
+                    } catch (error) {
+                        toast.error('Error crítico de conexión con SAP Hana.');
+                    } finally {
+                        setSyncingSap(false);
+                    }
+                }
+            },
+            cancel: {
+                label: 'Cancelar'
             }
-        } catch (error) {
-            console.error(error);
-            alert('Error crítico de conexión al intentar comunicarse con SAP Hana.');
-        } finally {
-            setSyncingSap(false);
-        }
+        });
     };
 
     return (
-        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-5 border-b border-white/60">
-            <div>
+        <div className="flex flex-col sm:flex-row justify-end items-start sm:items-center gap-4 pb-5 ">
+            {/* <div>
                 <div className="flex items-center gap-3">
                     <div className="p-2.5 bg-indigo-600/10 rounded-xl border border-indigo-500/20 text-indigo-600 shadow-sm">
                         <Package size={24} />
@@ -49,7 +59,7 @@ export default function ProductHeader({ onRefresh, loading }) {
                         </p>
                     </div>
                 </div>
-            </div>
+            </div> */}
 
             {/* Acciones de Datos Clara e Independientes */}
             <div className="flex items-center gap-2 w-full sm:w-auto justify-end">

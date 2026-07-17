@@ -10,7 +10,8 @@ export default function CustomerGroupsPage() {
     const [view, setView] = useState('list');
     const [groups, setGroups] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [actionLoading, setActionLoading] = useState(false); // Estado agregado
+    const [actionLoading, setActionLoading] = useState(false);
+    const [activeTab, setActiveTab] = useState('all');
     const [formData, setFormData] = useState({ id: '', group: '', values: [], active: true });
 
     // Estados para buscador
@@ -39,10 +40,14 @@ export default function CustomerGroupsPage() {
 
     // Filtros
     const filteredGroups = useMemo(() => {
-        return groups.filter(g =>
-            g.group?.toLowerCase().includes(searchTerm.toLowerCase())
-        ) || [];
-    }, [groups, searchTerm]);
+        return groups.filter((group) => {
+            const matchesTab = activeTab === 'all' || group.type === activeTab;
+            const matchesSearch = searchTerm.toLowerCase() === '' ||
+                group.group.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                group.values.some(v => v.includes(searchTerm));
+            return matchesTab && matchesSearch;
+        });
+    }, [groups, searchTerm, activeTab]);
 
     const filteredCatalog = useMemo(() => {
         return catalogCustomers.filter(c =>
@@ -56,7 +61,7 @@ export default function CustomerGroupsPage() {
         e.preventDefault();
         setActionLoading(true);
         try {
-            await api.post('/customer-groups', formData);
+            await api.post('/customer-groups/create', formData);
             await fetchGroups();
             setView('list');
         } catch (error) {
@@ -66,8 +71,34 @@ export default function CustomerGroupsPage() {
         }
     };
 
+    const handleDelete = async (id) => {
+        // Asegúrate de tener importado 'toast' de 'sonner'
+        toast('¿Estás seguro de que deseas eliminar este grupo?', {
+            action: {
+                label: 'Eliminar',
+                onClick: async () => {
+                    try {
+                        // Ajusta la ruta según tu endpoint de clientes
+                        const response = await api.delete(`/customer-groups/delete/${id}`);
+                        const resData = response.data || response;
+
+                        if (resData && (resData.error === false || resData.error === 0)) {
+                            toast.success('Grupo eliminado exitosamente.');
+                            fetchGroups();
+                        } else {
+                            toast.error(resData?.result || 'No se pudo eliminar el grupo.');
+                        }
+                    } catch (err) {
+                        toast.error('Error al intentar eliminar el registro.');
+                    }
+                }
+            },
+            cancel: { label: 'Cancelar' }
+        });
+    };
+
     return (
-        <div className="max-w-7xl mx-auto p-6 space-y-6">
+        <div className="max-w-7xl mx-auto">
             <GroupListHeader view={view} onCreateClick={() => setView('add')} />
 
             {view === 'list' ? (
@@ -77,7 +108,10 @@ export default function CustomerGroupsPage() {
                     loading={loading}
                     searchTerm={searchTerm}
                     setSearchTerm={setSearchTerm}
+                    activeTab={activeTab}       // Verifica que coincida
+                    setActiveTab={setActiveTab} // Verifica que coincida
                     onEditClick={(g) => { setFormData(g); setView('edit'); }}
+                    onDeleteClick={handleDelete} // Asegúrate de tener esta función
                 />
             ) : (
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">

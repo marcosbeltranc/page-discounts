@@ -11,6 +11,11 @@ export default function PromotionWizard({ promotionData, onCancel, onFinish }) {
     const [step, setStep] = useState(1);
     const [promotionId, setPromotionId] = useState(promotionData?.id || null);
 
+    // Guarda los datos actualizados de la promoción (name, discount_amount,
+    // discount_type, discount_limit, etc.) conforme el usuario avanza por el wizard.
+    // Así Step2 y Step3 siempre reciben la info más reciente, no la original.
+    const [wizardData, setWizardData] = useState(promotionData || null);
+
     return (
         <div className="bg-white p-8 rounded-2xl border border-slate-200">
             <PromotionStepper currentStep={step} />
@@ -18,9 +23,10 @@ export default function PromotionWizard({ promotionData, onCancel, onFinish }) {
             {/* Paso 1: Gestión de datos generales (Creación o Edición) */}
             {step === 1 && (
                 <Step1
-                    data={promotionData}
-                    onNext={(id) => {
+                    data={wizardData}
+                    onNext={(id, updatedData) => {
                         setPromotionId(id);
+                        setWizardData(updatedData);
                         setStep(2);
                     }}
                 />
@@ -29,6 +35,7 @@ export default function PromotionWizard({ promotionData, onCancel, onFinish }) {
             {/* Paso 2: Configuración de Reglas (vinculado al promotionId) */}
             {step === 2 && (
                 <Step2
+                    data={wizardData}
                     promotionId={promotionId}
                     onNext={() => setStep(3)}
                 />
@@ -37,6 +44,7 @@ export default function PromotionWizard({ promotionData, onCancel, onFinish }) {
             {/* Paso 3: Configuración de Acciones y finalización */}
             {step === 3 && (
                 <Step3
+                    data={wizardData}
                     promotionId={promotionId}
                     onFinish={onFinish}
                 />

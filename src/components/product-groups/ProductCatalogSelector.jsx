@@ -96,7 +96,7 @@ export default function ProductCatalogSelector({
             </div>
 
             {/* INPUT RESPALDO MANUAL */}
-            <div className="bg-slate-50 border border-slate-200 p-3 rounded-xl flex items-center justify-between gap-3 shadow-inner">
+            {/* <div className="bg-slate-50 border border-slate-200 p-3 rounded-xl flex items-center justify-between gap-3 shadow-inner">
                 <div className="shrink-0 text-[11px] font-bold text-slate-500 leading-tight">
                     ¿No encuentras el SKU? <br /><span className="text-[10px] font-medium text-slate-400">Entrada manual rápida:</span>
                 </div>
@@ -117,7 +117,7 @@ export default function ProductCatalogSelector({
                         +
                     </button>
                 </div>
-            </div>
+            </div> */}
         </div>
     );
 }
