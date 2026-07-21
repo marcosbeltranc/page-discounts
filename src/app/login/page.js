@@ -56,7 +56,7 @@ export default function LoginPage() {
                 {/* Contenedor del Logo */}
                 <div className="mb-8 flex justify-center">
                     <div className="relative mix-blend-multiply">
-                        <Image src="/images/promo.png" alt="Logo" width={180} height={180} priority />
+                        <Image src="/images/promo_logo.png" alt="Logo" width={180} height={180} priority />
                     </div>
                 </div>
 

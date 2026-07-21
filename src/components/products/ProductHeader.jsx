@@ -68,7 +68,6 @@ export default function ProductHeader({ onRefresh, loading }) {
                 <button
                     onClick={onRefresh}
                     disabled={loading || syncingSap}
-                    title="Actualizar la tabla con los datos locales de PostgreSQL"
                     className="flex items-center justify-center p-2.5 bg-white/80 hover:bg-white text-slate-600 border border-slate-200 rounded-xl shadow-sm transition-all disabled:opacity-50 active:scale-95"
                 >
                     <RefreshCw size={15} className={loading ? 'animate-spin text-indigo-600' : ''} />

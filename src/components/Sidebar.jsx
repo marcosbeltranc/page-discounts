@@ -27,7 +27,7 @@ export default function Sidebar({ onLogout }) {
                 <div className="p-6 flex justify-center border-b border-white/40">
                     <div className="relative mix-blend-multiply">
                         <Image
-                            src="/images/promo.png"
+                            src="/images/promo_logo.png"
                             alt="Logo"
                             width={300}
                             height={300}

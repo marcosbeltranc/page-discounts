@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { api } from '@/lib/api';
+import { toast } from 'sonner';
 
 const Field = ({ label, children }) => (<div className="space-y-1"> <label className="block text-xs font-semibold uppercase tracking-wide text-slate-500">
     {label} </label>
@@ -82,6 +83,10 @@ export default function Step2({ promotionId, onNext, data }) {
             mix_products: false,
             product_id: '',
         });
+        // Limpiamos también los estados visuales del formulario
+        setSearchTerm('');
+        setMode('sku');
+        setShowDropdown(false);
     };
 
     const filteredProducts = allProducts.filter(p =>
@@ -98,16 +103,34 @@ export default function Step2({ promotionId, onNext, data }) {
 
         try {
             if (rule.id) {
-                await api.put(`/promotion-rules/update/${rule.id}`, finalRule);
-                setRules(rules.map(r => r.id === rule.id ? finalRule : r));
+                let res = await api.put(`/promotion-rules/update/${rule.id}`, finalRule);
+                console.log('res', res);
+                if (res.result.id) {
+                    console.log('update');
+                    setRules(rules.map(r => r.id === rule.id ? finalRule : r));
+                    resetForm();
+                } else {
+                    console.log('error');
+                    toast.error(res.result);
+                    resetForm();
+                }
             } else {
                 const res = await api.post('/promotion-rules/create', finalRule);
-                setRules([...rules, res.result]);
+                console.log('res', res);
+                if (res.result.id) {
+                    console.log('create');
+                    setRules([...rules, res.result]);
+                    resetForm();
+                } else {
+                    console.log('error');
+                    toast.error(res.result);
+                    resetForm();
+                }
             }
-            resetForm();
         } catch (err) {
             console.error(err);
-            alert('Error al guardar la regla');
+            toast.error('Error al guardar la regla');
+            resetForm();
         }
     };
 
