@@ -49,8 +49,8 @@ export default function CustomerListTable({
                                         <span
                                             key={`${group.id}-client-${idx}`}
                                             className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded transition-all border ${isMatch
-                                                    ? 'bg-indigo-600 text-white border-indigo-400 shadow-sm scale-105'
-                                                    : 'bg-slate-50 text-slate-600 border-slate-200'
+                                                ? 'bg-indigo-600 text-white border-indigo-400 shadow-sm scale-105'
+                                                : 'bg-slate-50 text-slate-600 border-slate-200'
                                                 }`}
                                         >
                                             {id}
@@ -62,11 +62,12 @@ export default function CustomerListTable({
                             )}
                         </div>
 
-
-                        <div className="flex justify-end gap-2 mt-4 pt-3 border-t">
-                            <button onClick={() => onEditClick(group)} className="p-2 bg-slate-50 rounded-xl"><Edit2 size={14} /></button>
-                            <button onClick={() => onDeleteClick(group.id)} className="p-2 bg-rose-50 text-rose-600 rounded-xl"><Trash2 size={14} /></button>
-                        </div>
+                        {group.type !== 'auto' && (
+                            <div className="flex justify-end gap-2 mt-4 pt-3 border-t border-slate-100">
+                                <button onClick={() => onEditClick(group)} className="p-2 bg-slate-50 rounded-xl"><Edit2 size={14} /></button>
+                                <button onClick={() => onDeleteClick(group.id)} className="p-2 bg-rose-50 text-rose-600 rounded-xl"><Trash2 size={14} /></button>
+                            </div>
+                        )}
                     </div>
                 ))}
             </div>

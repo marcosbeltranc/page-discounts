@@ -114,14 +114,16 @@ export default function GroupListTable({
                                     </div>
                                 </div>
 
-                                <div className="flex justify-end gap-2 mt-6 pt-3 border-t border-slate-100">
-                                    <button onClick={() => onEditClick(group)} className="p-2 bg-slate-50 hover:bg-slate-100 text-slate-600 border border-slate-200 rounded-xl transition-all active:scale-95">
-                                        <Edit2 size={14} />
-                                    </button>
-                                    <button onClick={() => onDeleteClick(group.id)} className="p-2 bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-100 rounded-xl transition-all active:scale-95">
-                                        <Trash2 size={14} />
-                                    </button>
-                                </div>
+                                {group.type !== 'auto' && (
+                                    <div className="flex justify-end gap-2 mt-6 pt-3 border-t border-slate-100">
+                                        <button onClick={() => onEditClick(group)} className="p-2 bg-slate-50 hover:bg-slate-100 text-slate-600 border border-slate-200 rounded-xl transition-all active:scale-95">
+                                            <Edit2 size={14} />
+                                        </button>
+                                        <button onClick={() => onDeleteClick(group.id)} className="p-2 bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-100 rounded-xl transition-all active:scale-95">
+                                            <Trash2 size={14} />
+                                        </button>
+                                    </div>
+                                )}
                             </div>
                         );
                     })}
