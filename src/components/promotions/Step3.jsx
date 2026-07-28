@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { api } from '@/lib/api';
+import { toast } from 'sonner';
 
 const Field = ({ label, children }) => (
     <div className="space-y-1">
@@ -110,7 +111,7 @@ const getEmptyAction = (promotionId) => ({
     items_to_add: 0
 });
 
-export default function Step3({ promotionId, onFinish, data }) {
+export default function Step3({ promotionId, onFinish, onBack, data }) {
     console.log('data step 3', data);
     const [groups, setGroups] = useState({
         products: [],
@@ -123,7 +124,10 @@ export default function Step3({ promotionId, onFinish, data }) {
     });
 
     const [actions, setActions] = useState([]);
+    const [rules, setRules] = useState([]);
     const [skuSearch, setSkuSearch] = useState('');
+    const [isFinishing, setIsFinishing] = useState(false);
+    const [isLoadingResources, setIsLoadingResources] = useState(true);
 
     const [action, setAction] = useState(
         getEmptyAction(promotionId)
@@ -131,19 +135,23 @@ export default function Step3({ promotionId, onFinish, data }) {
 
     useEffect(() => {
         const fetchResources = async () => {
+            setIsLoadingResources(true);
+
             try {
                 const [
                     productGroupsRes,
                     giftGroupsRes,
                     productsRes,
                     giftsRes,
-                    actionsRes
+                    actionsRes,
+                    rulesRes
                 ] = await Promise.all([
                     api.get('/product-groups'),
                     api.get('/promotional-product-groups'),
                     api.get('/products'),
                     api.get('/promotional-products'),
-                    api.get(`/promotion-actions?promotion_id=${promotionId}`)
+                    api.get(`/promotion-actions?promotion_id=${promotionId}`),
+                    api.get(`/promotion-rules?promotion_id=${promotionId}`)
                 ]);
 
                 setGroups({
@@ -157,9 +165,12 @@ export default function Step3({ promotionId, onFinish, data }) {
                 });
 
                 setActions(getResultArray(actionsRes));
+                setRules(getResultArray(rulesRes));
             } catch (err) {
                 console.error(err);
                 alert('Error al cargar recursos de acciones');
+            } finally {
+                setIsLoadingResources(false);
             }
         };
 
@@ -435,6 +446,42 @@ export default function Step3({ promotionId, onFinish, data }) {
         );
 
         return group?.group || group?.name || `ID ${a.applicable_to}`;
+    };
+
+    const handleFinish = async () => {
+        if (rules.length === 0) {
+            toast.error('No puedes finalizar la promoción sin al menos una regla configurada');
+            return;
+        }
+
+        if (actions.length === 0) {
+            toast.error('Agrega al menos una acción antes de finalizar la promoción');
+            return;
+        }
+
+        setIsFinishing(true);
+
+        try {
+            // Activamos la promoción hasta este punto, ya que ahora sabemos
+            // que cuenta con reglas y acciones configuradas. Esto evita que
+            // existan promociones activas incompletas.
+            const response = await api.put(`/promotions/update/${promotionId}`, {
+                ...data,
+                active: true
+            });
+
+            if (response.error) {
+                toast.error(response.result);
+                return;
+            }
+
+            onFinish();
+        } catch (err) {
+            console.error(err);
+            toast.error('Error al activar la promoción');
+        } finally {
+            setIsFinishing(false);
+        }
     };
 
     const isDiscount = action.operation_type === 'DISCOUNT';
@@ -764,13 +811,33 @@ export default function Step3({ promotionId, onFinish, data }) {
                 )}
             </div>
 
-            <button
-                type="button"
-                onClick={onFinish}
-                className="w-full bg-green-600 hover:bg-green-700 text-white py-4 rounded-xl font-bold transition"
-            >
-                Finalizar Promoción
-            </button>
+            <div className="flex gap-3">
+                <button
+                    type="button"
+                    onClick={onBack}
+                    className="w-1/3 bg-white border border-slate-300 text-slate-600 hover:bg-slate-50 py-4 rounded-xl font-bold transition"
+                >
+                    Atrás
+                </button>
+
+                <button
+                    type="button"
+                    onClick={handleFinish}
+                    disabled={isFinishing || isLoadingResources || rules.length === 0 || actions.length === 0}
+                    title={
+                        isLoadingResources
+                            ? 'Cargando información de la promoción...'
+                            : rules.length === 0
+                                ? 'Necesitas al menos una regla para finalizar'
+                                : actions.length === 0
+                                    ? 'Necesitas al menos una acción para finalizar'
+                                    : undefined
+                    }
+                    className="w-2/3 bg-green-600 hover:bg-green-700 disabled:bg-slate-300 disabled:cursor-not-allowed text-white py-4 rounded-xl font-bold transition"
+                >
+                    {isFinishing ? 'Activando...' : 'Finalizar Promoción'}
+                </button>
+            </div>
         </div>
     );
 }

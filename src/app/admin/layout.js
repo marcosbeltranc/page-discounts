@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import Cookies from 'js-cookie';
 import Sidebar from '@/components/Sidebar';
+import Label from '@/components/Label';
 
 export default function AdminLayout({ children }) {
     const [authorized, setAuthorized] = useState(false);
@@ -47,6 +48,7 @@ export default function AdminLayout({ children }) {
                 </main>
             </div>
 
+            <Label />
         </div>
     );
 }

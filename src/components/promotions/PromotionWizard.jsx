@@ -38,6 +38,7 @@ export default function PromotionWizard({ promotionData, onCancel, onFinish }) {
                     data={wizardData}
                     promotionId={promotionId}
                     onNext={() => setStep(3)}
+                    onBack={() => setStep(1)}
                 />
             )}
 
@@ -47,6 +48,7 @@ export default function PromotionWizard({ promotionData, onCancel, onFinish }) {
                     data={wizardData}
                     promotionId={promotionId}
                     onFinish={onFinish}
+                    onBack={() => setStep(2)}
                 />
             )}
 

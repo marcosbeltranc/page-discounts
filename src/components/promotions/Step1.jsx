@@ -10,6 +10,8 @@ const Field = ({ label, children }) => (<div className="space-y-1"> <label class
 );
 
 export default function Step1({ data, onNext }) {
+    const isEdit = !!data?.id;
+
     const [form, setForm] = useState({
         name: '',
         description: '',
@@ -63,15 +65,24 @@ export default function Step1({ data, onNext }) {
             return;
         }
 
-        const isEdit = !!data?.id;
         const url = isEdit
             ? `/promotions/update/${data.id}`
             : '/promotions/create';
 
         const method = isEdit ? api.put : api.post;
 
+        // Toda promoción nueva se crea inactiva. No se activa hasta que
+        // el wizard se completa (Paso 3), garantizando que nunca exista
+        // una promoción activa sin reglas ni acciones configuradas.
+        // En edición sí se permite alternar 'active' manualmente (checkbox),
+        // ya que en ese caso la promoción ya pasó por el wizard completo.
+        const payload = {
+            ...form,
+            active: isEdit ? Boolean(form.active) : false
+        };
+
         try {
-            const response = await method(url, form);
+            const response = await method(url, payload);
             if (response.error) {
                 toast.error(response.result);
                 return;
@@ -139,7 +150,7 @@ export default function Step1({ data, onNext }) {
                 }
             }
 
-            onNext(response.result.id, { ...form, ...response.result });
+            onNext(response.result.id, { ...payload, ...response.result });
         } catch (err) {
             console.error(err);
             toast.error('Error al guardar la promoción');
@@ -265,6 +276,35 @@ export default function Step1({ data, onNext }) {
                     </Field>
                 </div>
             </div>
+
+            {/* Estado (solo disponible al editar, nunca en creación) */}
+            {isEdit && (
+                <div className="bg-slate-50 border border-slate-200 rounded-2xl p-5 space-y-3">
+                    <h2 className="text-lg font-bold text-slate-800">
+                        Estado
+                    </h2>
+
+                    <label className="flex items-center gap-3 text-sm">
+                        <input
+                            type="checkbox"
+                            checked={Boolean(form.active)}
+                            onChange={(e) =>
+                                setForm({
+                                    ...form,
+                                    active: e.target.checked
+                                })
+                            }
+                        />
+                        Promoción activa
+                    </label>
+
+                    <p className="text-xs text-slate-500">
+                        Controla si la promoción está activa de cara al cliente.
+                        Las promociones nuevas siempre se crean inactivas hasta
+                        completar los 3 pasos del wizard.
+                    </p>
+                </div>
+            )}
 
             {/* Configuración de Descuento */}
             {form.type === 'discount' && (

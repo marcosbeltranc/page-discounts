@@ -52,7 +52,7 @@ export default function PromotionsPage() {
             ) : (
                 <PromotionWizard
                     promotionData={editingPromotion}
-                    onCancel={() => { setEditingPromotion(null); setView('list'); }}
+                    onCancel={() => { setEditingPromotion(null); setView('list'); fetchPromotions(); }}
                     onFinish={() => { setEditingPromotion(null); setView('list'); fetchPromotions(); }}
                 />
             )}

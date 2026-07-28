@@ -9,7 +9,7 @@ const Field = ({ label, children }) => (<div className="space-y-1"> <label class
     {children} </div>
 );
 
-export default function Step2({ promotionId, onNext, data }) {
+export default function Step2({ promotionId, onNext, onBack, data }) {
     console.log('data', data);
     const [groups, setGroups] = useState({
         users: [],
@@ -174,6 +174,15 @@ export default function Step2({ promotionId, onNext, data }) {
     //         alert('Error al guardar la regla');
     //     }
     // };
+
+    const handleContinue = () => {
+        if (rules.length === 0) {
+            toast.error('Debes agregar al menos una regla antes de continuar');
+            return;
+        }
+
+        onNext();
+    };
 
     const handleDelete = async (id) => {
         if (!confirm('¿Eliminar esta regla?')) return;
@@ -380,6 +389,10 @@ export default function Step2({ promotionId, onNext, data }) {
                             })
                         }
                     >
+                        <option value="">
+                            Selecciona un grupo
+                        </option>
+
                         {groups.users.map(g => (
                             <option
                                 key={g.id}
@@ -439,12 +452,24 @@ export default function Step2({ promotionId, onNext, data }) {
             </div>
 
             {/* Navegación */}
-            <button
-                onClick={onNext}
-                className="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-4 rounded-xl font-bold transition"
-            >
-                Continuar a Acciones
-            </button>
+            <div className="flex gap-3">
+                <button
+                    type="button"
+                    onClick={onBack}
+                    className="w-1/3 bg-white border border-slate-300 text-slate-600 hover:bg-slate-50 py-4 rounded-xl font-bold transition"
+                >
+                    Atrás
+                </button>
+
+                <button
+                    onClick={handleContinue}
+                    disabled={rules.length === 0}
+                    title={rules.length === 0 ? 'Agrega al menos una regla para continuar' : undefined}
+                    className="w-2/3 bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-300 disabled:cursor-not-allowed text-white py-4 rounded-xl font-bold transition"
+                >
+                    Continuar a Acciones
+                </button>
+            </div>
         </div>
     );
 
