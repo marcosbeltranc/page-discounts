@@ -12,7 +12,15 @@ export default function CustomerGroupsPage() {
     const [loading, setLoading] = useState(true);
     const [actionLoading, setActionLoading] = useState(false);
     const [activeTab, setActiveTab] = useState('all');
-    const [formData, setFormData] = useState({ id: '', group: '', values: [], active: true });
+    const [loadingCatalog, setLoadingCatalog] = useState(true);
+
+    const [formData, setFormData] = useState({
+        id: '',
+        group: '',
+        type: 'manual',
+        values: [],
+        active: true
+    });
 
     // Estados para buscador
     const [searchTerm, setSearchTerm] = useState('');
@@ -33,9 +41,19 @@ export default function CustomerGroupsPage() {
     };
 
     const fetchCatalog = async () => {
-        const res = await api.get('/customers');
-        const data = res.data || res;
-        setCatalogCustomers(data.result || []);
+        setLoadingCatalog(true);
+
+        try {
+            const res = await api.get('/customers');
+            const data = res.data || res;
+
+            setCatalogCustomers(data.result || []);
+        } catch (error) {
+            console.error('Error al cargar clientes:', error);
+            setCatalogCustomers([]);
+        } finally {
+            setLoadingCatalog(false);
+        }
     };
 
     // Filtros
@@ -49,12 +67,31 @@ export default function CustomerGroupsPage() {
         });
     }, [groups, searchTerm, activeTab]);
 
-    const filteredCatalog = useMemo(() => {
-        return catalogCustomers.filter(c =>
-            c.nombre_cliente?.toLowerCase().includes(catalogSearch.toLowerCase()) ||
-            c.codigo_cliente?.includes(catalogSearch)
-        ) || [];
-    }, [catalogSearch, catalogCustomers]);
+    // const filteredCatalog = useMemo(() => {
+    //     return catalogCustomers.filter(c =>
+    //         c.nombre_cliente?.toLowerCase().includes(catalogSearch.toLowerCase()) ||
+    //         c.codigo_cliente?.includes(catalogSearch)
+    //     ) || [];
+    // }, [catalogSearch, catalogCustomers]);
+
+    const handleCreateClick = () => {
+        setFormData({
+            id: '',
+            group: '',
+            type: 'manual',
+            values: [],
+            active: true
+        });
+
+        setCatalogSearch('');
+        setView('add');
+    };
+
+    const automaticGroups = useMemo(() => {
+        return groups.filter(
+            group => group.type === 'auto' && group.active
+        );
+    }, [groups]);
 
     // Lógica de guardado
     const handleSubmit = async (e) => {
@@ -99,7 +136,12 @@ export default function CustomerGroupsPage() {
 
     return (
         <div className="max-w-7xl mx-auto">
-            <GroupListHeader view={view} onCreateClick={() => setView('add')} />
+            {/* <GroupListHeader view={view} onCreateClick={() => setView('add')} /> */}
+
+            <GroupListHeader
+                view={view}
+                onCreateClick={handleCreateClick}
+            />
 
             {view === 'list' ? (
                 <GroupListTable
@@ -130,12 +172,45 @@ export default function CustomerGroupsPage() {
                     <CustomerCatalogSelector
                         catalogSearch={catalogSearch}
                         setCatalogSearch={setCatalogSearch}
-                        filteredCustomers={filteredCatalog}
-                        addedIds={formData.values}
-                        onSelectCustomer={(id) => setFormData({
-                            ...formData,
-                            values: formData.values.includes(id) ? formData.values : [...formData.values, id]
-                        })}
+                        loadingCatalog={loadingCatalog}
+                        customers={catalogCustomers}
+                        automaticGroups={automaticGroups}
+                        selectedIds={formData.values}
+
+                        onToggleCustomer={(customerId) => {
+                            const normalizedId = String(customerId);
+
+                            setFormData(prev => {
+                                const currentValues = (prev.values || []).map(String);
+                                const isSelected = currentValues.includes(normalizedId);
+
+                                return {
+                                    ...prev,
+                                    values: isSelected
+                                        ? currentValues.filter(id => id !== normalizedId)
+                                        : [...currentValues, normalizedId]
+                                };
+                            });
+                        }}
+
+                        onToggleGroup={(customerIds, checked) => {
+                            const normalizedGroupIds = customerIds.map(String);
+                            const groupIdSet = new Set(normalizedGroupIds);
+
+                            setFormData(prev => {
+                                const currentValues = (prev.values || []).map(String);
+
+                                return {
+                                    ...prev,
+                                    values: checked
+                                        ? [...new Set([
+                                            ...currentValues,
+                                            ...normalizedGroupIds
+                                        ])]
+                                        : currentValues.filter(id => !groupIdSet.has(id))
+                                };
+                            });
+                        }}
                     />
                 </div>
             )}

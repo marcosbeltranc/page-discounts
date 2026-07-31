@@ -1,5 +1,6 @@
 'use client';
-import { useState, useEffect, useMemo } from 'react';
+
+import { useEffect, useMemo, useState } from 'react';
 import { api } from '@/lib/api';
 import { toast } from 'sonner';
 
@@ -7,6 +8,20 @@ import GroupListHeader from '@/components/product-groups/GroupListHeader';
 import GroupListTable from '@/components/product-groups/GroupListTable';
 import GroupFormConfig from '@/components/product-groups/GroupFormConfig';
 import ProductCatalogSelector from '@/components/product-groups/ProductCatalogSelector';
+
+const createInitialFormState = () => ({
+    id: '',
+    group: '',
+    values: [],
+    type: 'manual',
+    active: true
+});
+
+const normalizeSku = (value) => String(value ?? '').trim().toUpperCase();
+
+const isActive = (value) => (
+    value === true || value === 1 || value === '1' || value === 'true'
+);
 
 export default function ProductGroupsPage() {
     const [view, setView] = useState('list');
@@ -20,17 +35,7 @@ export default function ProductGroupsPage() {
 
     const [searchTerm, setSearchTerm] = useState('');
     const [activeTab, setActiveTab] = useState('all');
-    const [currentSku, setCurrentSku] = useState('');
-
-    const initialFormState = {
-        id: '',
-        group: '',
-        values: [],
-        type: 'manual',
-        active: true
-    };
-
-    const [formData, setFormData] = useState(initialFormState);
+    const [formData, setFormData] = useState(createInitialFormState);
 
     useEffect(() => {
         fetchGroups();
@@ -44,6 +49,7 @@ export default function ProductGroupsPage() {
     const fetchGroups = async () => {
         try {
             setLoading(true);
+
             const response = await api.get('/product-groups');
             const resData = unwrapResponse(response);
 
@@ -51,36 +57,61 @@ export default function ProductGroupsPage() {
                 toast.error('El servidor no envió datos válidos.');
                 return;
             }
-            if (resData.error === true || resData.error === 1 || resData.error === 'true') {
+
+            if (
+                resData.error === true ||
+                resData.error === 1 ||
+                resData.error === 'true'
+            ) {
                 toast.error(resData.result || 'Error reportado por el servidor.');
                 setGroups([]);
                 return;
             }
 
-            let rawGroups = resData.result;
+            const rawGroups = resData.result;
+
             if (typeof rawGroups === 'string') {
                 setGroups([]);
-                if (!rawGroups.toLowerCase().includes('no se encontraron')) toast.error(rawGroups);
+
+                if (!rawGroups.toLowerCase().includes('no se encontraron')) {
+                    toast.error(rawGroups);
+                }
+
                 return;
             }
 
-            if (Array.isArray(rawGroups)) {
-                const sanitizedGroups = rawGroups.map((group) => {
-                    let parsedValues = [];
-                    if (Array.isArray(group.values)) parsedValues = group.values;
-                    else if (typeof group.values === 'string') {
-                        try {
-                            const parsed = JSON.parse(group.values);
-                            parsedValues = Array.isArray(parsed) ? parsed : [];
-                        } catch (e) { parsedValues = []; }
-                    }
-                    return { ...group, values: parsedValues };
-                });
-                setGroups(sanitizedGroups);
-            } else {
+            if (!Array.isArray(rawGroups)) {
                 setGroups([]);
+                return;
             }
-        } catch (err) {
+
+            const sanitizedGroups = rawGroups.map((group) => {
+                let parsedValues = [];
+
+                if (Array.isArray(group.values)) {
+                    parsedValues = group.values;
+                } else if (typeof group.values === 'string') {
+                    try {
+                        const parsed = JSON.parse(group.values);
+                        parsedValues = Array.isArray(parsed) ? parsed : [];
+                    } catch {
+                        parsedValues = [];
+                    }
+                }
+
+                return {
+                    ...group,
+                    values: [...new Set(
+                        parsedValues
+                            .map(normalizeSku)
+                            .filter(Boolean)
+                    )]
+                };
+            });
+
+            setGroups(sanitizedGroups);
+        } catch (error) {
+            console.error('Error al cargar grupos de productos:', error);
             toast.error('Error de conexión con el servidor.');
         } finally {
             setLoading(false);
@@ -89,15 +120,26 @@ export default function ProductGroupsPage() {
 
     const fetchProductsCatalog = async () => {
         if (productsCatalog.length > 0) return;
+
         try {
             setLoadingCatalog(true);
+
             const response = await api.get('/products');
             const resData = unwrapResponse(response);
+
             if (resData && !resData.error && Array.isArray(resData.result)) {
-                const validProducts = resData.result.filter(p => p.sku || p.codigo_sap);
+                const validProducts = resData.result.filter(
+                    product => product.sku || product.codigo_sap
+                );
+
                 setProductsCatalog(validProducts);
+                return;
             }
-        } catch (err) {
+
+            setProductsCatalog([]);
+            toast.error('El catálogo de productos no contiene datos válidos.');
+        } catch (error) {
+            console.error('Error al cargar el catálogo de productos:', error);
             toast.error('No se pudo cargar el catálogo auxiliar.');
         } finally {
             setLoadingCatalog(false);
@@ -106,64 +148,173 @@ export default function ProductGroupsPage() {
 
     const filteredGroups = useMemo(() => {
         const cleanSearch = searchTerm.trim().toLowerCase();
-        if (!cleanSearch && activeTab === 'all') return groups;
+
         return groups.filter((group) => {
-            if (activeTab !== 'all' && group.type !== activeTab) return false;
-            if (!cleanSearch) return true;
-            if (group.group?.toLowerCase().includes(cleanSearch)) return true;
-            if (Array.isArray(group.values)) {
-                return group.values.some(sku => sku && sku.toLowerCase().includes(cleanSearch));
+            if (activeTab !== 'all' && group.type !== activeTab) {
+                return false;
             }
-            return false;
+
+            if (!cleanSearch) return true;
+
+            const matchesName = String(group.group ?? '')
+                .toLowerCase()
+                .includes(cleanSearch);
+
+            const matchesSku = Array.isArray(group.values) && group.values.some(
+                sku => String(sku).toLowerCase().includes(cleanSearch)
+            );
+
+            return matchesName || matchesSku;
         });
     }, [groups, searchTerm, activeTab]);
 
-    const filteredCatalogProducts = useMemo(() => {
-        const query = catalogSearch.trim().toLowerCase();
-        if (!query) return productsCatalog.slice(0, 12);
-        return productsCatalog.filter(product => {
-            return product.sku?.toLowerCase().includes(query) ||
-                product.codigo_sap?.toLowerCase().includes(query) ||
-                product.descripcion?.toLowerCase().includes(query) ||
-                product.marca?.toLowerCase().includes(query);
-        }).slice(0, 20);
-    }, [productsCatalog, catalogSearch]);
+    const automaticGroups = useMemo(() => {
+        return groups.filter(
+            group => group.type === 'auto' && isActive(group.active)
+        );
+    }, [groups]);
 
-    const handleSelectSku = (skuCode) => {
-        const cleanSku = skuCode.trim().toUpperCase();
-        if (formData.values.includes(cleanSku)) return toast.error(`El SKU "${cleanSku}" ya forma parte de este grupo.`);
-        setFormData({ ...formData, values: [...formData.values, cleanSku] });
+    const openCreateView = () => {
+        setFormData(createInitialFormState());
+        setCatalogSearch('');
+        setView('add');
+        fetchProductsCatalog();
     };
 
-    const handleManualSkuAdd = () => {
-        const cleanSku = currentSku.trim().toUpperCase();
-        if (!cleanSku) return;
-        if (formData.values.includes(cleanSku)) return toast.error(`El SKU "${cleanSku}" ya está agregado.`);
-        setFormData({ ...formData, values: [...formData.values, cleanSku] });
-        setCurrentSku('');
+    const openEditView = (group) => {
+        setFormData({
+            id: group.id,
+            group: group.group || '',
+            values: Array.isArray(group.values)
+                ? [...new Set(group.values.map(normalizeSku).filter(Boolean))]
+                : [],
+            type: group.type || 'manual',
+            active: isActive(group.active)
+        });
+
+        setCatalogSearch('');
+        setView('edit');
+        fetchProductsCatalog();
     };
 
-    const handleSubmit = async (e) => {
-        e.preventDefault();
-        if (!formData.group.trim()) return toast.error('El nombre del grupo es obligatorio.');
-        if (!formData.values || formData.values.length === 0) return toast.error('Debes agregar al menos un SKU.');
+    const handleToggleSku = (sku) => {
+        const normalizedSku = normalizeSku(sku);
+        if (!normalizedSku) return;
+
+        setFormData((previous) => {
+            const currentValues = (previous.values || [])
+                .map(normalizeSku)
+                .filter(Boolean);
+
+            const isSelected = currentValues.includes(normalizedSku);
+
+            return {
+                ...previous,
+                values: isSelected
+                    ? currentValues.filter(value => value !== normalizedSku)
+                    : [...currentValues, normalizedSku]
+            };
+        });
+    };
+
+    const handleToggleGroup = (skus, checked) => {
+        const normalizedGroupSkus = [...new Set(
+            (skus || []).map(normalizeSku).filter(Boolean)
+        )];
+
+        if (normalizedGroupSkus.length === 0) return;
+
+        const groupSkuSet = new Set(normalizedGroupSkus);
+
+        setFormData((previous) => {
+            const currentValues = (previous.values || [])
+                .map(normalizeSku)
+                .filter(Boolean);
+
+            return {
+                ...previous,
+                values: checked
+                    ? [...new Set([...currentValues, ...normalizedGroupSkus])]
+                    : currentValues.filter(sku => !groupSkuSet.has(sku))
+            };
+        });
+    };
+
+    const handleRemoveSku = (sku) => {
+        const normalizedSku = normalizeSku(sku);
+
+        setFormData((previous) => ({
+            ...previous,
+            values: (previous.values || [])
+                .map(normalizeSku)
+                .filter(value => value && value !== normalizedSku)
+        }));
+    };
+
+    const handleReplaceSelection = (skus) => {
+        const normalizedSkus = [...new Set(
+            (skus || []).map(normalizeSku).filter(Boolean)
+        )];
+
+        setFormData((previous) => ({
+            ...previous,
+            // Reemplaza por completo cualquier selección anterior.
+            values: normalizedSkus
+        }));
+    };
+
+    const handleSubmit = async (event) => {
+        event.preventDefault();
+
+        const payload = {
+            ...formData,
+            group: formData.group.trim(),
+            values: [...new Set(
+                (formData.values || []).map(normalizeSku).filter(Boolean)
+            )]
+        };
+
+        if (!payload.group) {
+            toast.error('El nombre del grupo es obligatorio.');
+            return;
+        }
+
+        if (payload.values.length === 0) {
+            toast.error('Debes agregar al menos un SKU.');
+            return;
+        }
 
         try {
             setActionLoading(true);
-            let response = view === 'add'
-                ? await api.post('/product-groups/create', formData)
-                : await api.put(`/product-groups/update/${formData.id}`, formData);
+
+            const response = view === 'add'
+                ? await api.post('/product-groups/create', payload)
+                : await api.put(`/product-groups/update/${payload.id}`, payload);
 
             const resData = unwrapResponse(response);
 
-            if (resData && (resData.error === false || resData.error === 0 || resData.error === 'false')) {
-                toast.success(view === 'add' ? 'Grupo creado exitosamente.' : 'Grupo actualizado con éxito.');
+            if (
+                resData && (
+                    resData.error === false ||
+                    resData.error === 0 ||
+                    resData.error === 'false'
+                )
+            ) {
+                toast.success(
+                    view === 'add'
+                        ? 'Grupo creado exitosamente.'
+                        : 'Grupo actualizado con éxito.'
+                );
+
                 await fetchGroups();
                 setView('list');
             } else {
-                toast.error(resData?.result || 'Ocurrió un error al procesar la solicitud.');
+                toast.error(
+                    resData?.result || 'Ocurrió un error al procesar la solicitud.'
+                );
             }
-        } catch (err) {
+        } catch (error) {
+            console.error('Error al guardar grupo de productos:', error);
             toast.error('Error al conectar con la API.');
         } finally {
             setActionLoading(false);
@@ -176,15 +327,27 @@ export default function ProductGroupsPage() {
                 label: 'Eliminar',
                 onClick: async () => {
                     try {
-                        const response = await api.delete(`/product-groups/delete/${id}`);
+                        const response = await api.delete(
+                            `/product-groups/delete/${id}`
+                        );
                         const resData = unwrapResponse(response);
-                        if (resData && (resData.error === false || resData.error === 0 || resData.error === 'false')) {
+
+                        if (
+                            resData && (
+                                resData.error === false ||
+                                resData.error === 0 ||
+                                resData.error === 'false'
+                            )
+                        ) {
                             toast.success('Grupo eliminado exitosamente.');
                             fetchGroups();
                         } else {
-                            toast.error(resData?.result || 'No se pudo eliminar el grupo.');
+                            toast.error(
+                                resData?.result || 'No se pudo eliminar el grupo.'
+                            );
                         }
-                    } catch (err) {
+                    } catch (error) {
+                        console.error('Error al eliminar grupo de productos:', error);
                         toast.error('Error al intentar eliminar el registro.');
                     }
                 }
@@ -193,47 +356,47 @@ export default function ProductGroupsPage() {
         });
     };
 
-    // ... (filteredGroups, filteredCatalogProducts, handleSelectSku, handleManualSkuAdd se mantienen igual)
-
     return (
         <div className="max-w-7xl mx-auto">
             <GroupListHeader
                 view={view}
-                onCreateClick={() => {
-                    setFormData(initialFormState);
-                    setCurrentSku(''); setCatalogSearch(''); setView('add'); fetchProductsCatalog();
-                }}
+                onCreateClick={openCreateView}
             />
 
             {view === 'list' ? (
                 <GroupListTable
-                    groups={groups} filteredGroups={filteredGroups} loading={loading}
-                    searchTerm={searchTerm} setSearchTerm={setSearchTerm}
-                    activeTab={activeTab} setActiveTab={setActiveTab}
-                    onEditClick={(group) => {
-                        setFormData({
-                            id: group.id, group: group.group || '',
-                            values: Array.isArray(group.values) ? [...group.values] : [],
-                            type: group.type || 'manual', active: group.active === true || group.active === 1
-                        });
-                        setCurrentSku(''); setCatalogSearch(''); setView('edit'); fetchProductsCatalog();
-                    }}
+                    groups={groups}
+                    filteredGroups={filteredGroups}
+                    loading={loading}
+                    searchTerm={searchTerm}
+                    setSearchTerm={setSearchTerm}
+                    activeTab={activeTab}
+                    setActiveTab={setActiveTab}
+                    onEditClick={openEditView}
                     onDeleteClick={handleDelete}
                 />
             ) : (
                 <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-6">
                     <GroupFormConfig
-                        view={view} formData={formData} setFormData={setFormData}
-                        actionLoading={actionLoading} onSubmit={handleSubmit}
+                        view={view}
+                        formData={formData}
+                        setFormData={setFormData}
+                        actionLoading={actionLoading}
+                        onSubmit={handleSubmit}
                         onCancel={() => setView('list')}
-                        onRemoveSku={(sku) => setFormData({ ...formData, values: formData.values.filter(s => s !== sku) })}
+                        onRemoveSku={handleRemoveSku}
                     />
+
                     <ProductCatalogSelector
-                        catalogSearch={catalogSearch} setCatalogSearch={setCatalogSearch}
-                        loadingCatalog={loadingCatalog} filteredCatalogProducts={filteredCatalogProducts}
-                        addedSkus={formData.values} onSelectSku={handleSelectSku}
-                        currentSku={currentSku} setCurrentSku={setCurrentSku}
-                        onManualSubmit={handleManualSkuAdd}
+                        catalogSearch={catalogSearch}
+                        setCatalogSearch={setCatalogSearch}
+                        loadingCatalog={loadingCatalog}
+                        products={productsCatalog}
+                        automaticGroups={automaticGroups}
+                        selectedSkus={formData.values}
+                        onToggleSku={handleToggleSku}
+                        onToggleGroup={handleToggleGroup}
+                        onReplaceSelection={handleReplaceSelection}
                     />
                 </div>
             )}

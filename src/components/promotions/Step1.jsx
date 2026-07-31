@@ -307,82 +307,80 @@ export default function Step1({ data, onNext }) {
             )}
 
             {/* Configuración de Descuento */}
-            {form.type === 'discount' && (
-                <div className="bg-indigo-50 border border-indigo-100 rounded-2xl p-5 space-y-4">
-                    <h2 className="text-lg font-bold text-indigo-700">
-                        Configuración de Descuento
-                    </h2>
+            <div className="bg-indigo-50 border border-indigo-100 rounded-2xl p-5 space-y-4">
+                <h2 className="text-lg font-bold text-indigo-700">
+                    Configuración de Descuento
+                </h2>
 
-                    <div className="grid grid-cols-2 gap-4">
-                        <Field label="Tipo de Descuento">
-                            <select
-                                className="w-full p-3 border rounded-xl"
-                                value={form.discount_type}
-                                onChange={(e) =>
-                                    setForm({
-                                        ...form,
-                                        discount_type: e.target.value
-                                    })
-                                }
-                            >
-                                <option value="percentage">
-                                    Porcentaje (%)
-                                </option>
-
-                                <option value="fixed">
-                                    Monto Fijo ($)
-                                </option>
-                            </select>
-                        </Field>
-
-                        <Field label="Monto del Descuento">
-                            <input
-                                type="number"
-                                className="w-full p-3 border rounded-xl"
-                                value={form.discount_amount}
-                                onChange={(e) =>
-                                    setForm({
-                                        ...form,
-                                        discount_amount: e.target.value === '' ? 0 : Number(e.target.value)
-                                    })
-                                }
-                            />
-                        </Field>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4">
-                        <Field label="Límite de Descuento">
-                            <input
-                                type="number"
-                                className="w-full p-3 border rounded-xl"
-                                value={form.discount_limit}
-                                onChange={(e) =>
-                                    setForm({
-                                        ...form,
-                                        discount_limit: e.target.value
-                                    })
-                                }
-                            />
-                        </Field>
-
-                    </div>
-
-                    <label className="flex items-center gap-3 text-sm">
-                        <input
-                            type="checkbox"
-                            checked={form.include_tax}
+                <div className="grid grid-cols-2 gap-4">
+                    <Field label="Tipo de Descuento">
+                        <select
+                            className="w-full p-3 border rounded-xl"
+                            value={form.discount_type}
                             onChange={(e) =>
                                 setForm({
                                     ...form,
-                                    include_tax: e.target.checked
+                                    discount_type: e.target.value
+                                })
+                            }
+                        >
+                            <option value="percentage">
+                                Porcentaje (%)
+                            </option>
+
+                            <option value="fixed">
+                                Monto Fijo ($)
+                            </option>
+                        </select>
+                    </Field>
+
+                    <Field label="Monto del Descuento">
+                        <input
+                            type="number"
+                            className="w-full p-3 border rounded-xl"
+                            value={form.discount_amount}
+                            onChange={(e) =>
+                                setForm({
+                                    ...form,
+                                    discount_amount: e.target.value === '' ? 0 : Number(e.target.value)
                                 })
                             }
                         />
-
-                        Aplicar descuento sobre precios con impuestos
-                    </label>
+                    </Field>
                 </div>
-            )}
+
+                <div className="grid grid-cols-2 gap-4">
+                    <Field label="Límite de Descuento">
+                        <input
+                            type="number"
+                            className="w-full p-3 border rounded-xl"
+                            value={form.discount_limit}
+                            onChange={(e) =>
+                                setForm({
+                                    ...form,
+                                    discount_limit: e.target.value
+                                })
+                            }
+                        />
+                    </Field>
+
+                </div>
+
+                <label className="flex items-center gap-3 text-sm">
+                    <input
+                        type="checkbox"
+                        checked={form.include_tax}
+                        onChange={(e) =>
+                            setForm({
+                                ...form,
+                                include_tax: e.target.checked
+                            })
+                        }
+                    />
+
+                    Aplicar descuento sobre precios con impuestos
+                </label>
+            </div>
 
             {/* Restricciones */}
             <div className="bg-slate-50 border border-slate-200 rounded-2xl p-5 space-y-4">
