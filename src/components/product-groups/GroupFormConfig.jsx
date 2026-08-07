@@ -91,7 +91,7 @@ export default function ProductFormConfig({
                     </label>
                 </div>
 
-                <div className="border-t border-slate-100 pt-4">
+                {/* <div className="border-t border-slate-100 pt-4">
                     <div className="flex items-center justify-between gap-3 mb-2">
                         <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400">
                             Productos seleccionados
@@ -126,7 +126,7 @@ export default function ProductFormConfig({
                             ))
                         )}
                     </div>
-                </div>
+                </div> */}
 
                 <div className="flex justify-end gap-3 pt-4 border-t border-slate-100 mt-6">
                     <button

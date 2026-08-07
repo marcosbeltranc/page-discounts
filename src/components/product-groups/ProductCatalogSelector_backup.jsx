@@ -6,8 +6,6 @@ import {
     ChevronDown,
     ChevronRight,
     FileSpreadsheet,
-    Download,
-    Info,
     Loader2,
     PackageSearch,
     Search,
@@ -45,7 +43,6 @@ export default function ProductCatalogSelector({
     const [expandedGroups, setExpandedGroups] = useState({});
     const [importingSelection, setImportingSelection] = useState(false);
     const [importResult, setImportResult] = useState(null);
-    const [showMissingModal, setShowMissingModal] = useState(false);
     const fileInputRef = useRef(null);
 
     const selectedSet = useMemo(() => {
@@ -162,26 +159,10 @@ export default function ProductCatalogSelector({
     const clearSelection = () => {
         onToggleGroup([...selectedSet], false);
         setImportResult(null);
-        setShowMissingModal(false);
     };
 
     const openFilePicker = () => {
         fileInputRef.current?.click();
-    };
-
-    const downloadTemplate = async () => {
-        try {
-            const XLSX = await import('xlsx');
-            const worksheet = XLSX.utils.aoa_to_sheet([['SKU']]);
-            worksheet['!cols'] = [{ wch: 22 }];
-
-            const workbook = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(workbook, worksheet, 'Plantilla');
-            XLSX.writeFile(workbook, 'plantilla_SKU.xlsx');
-        } catch (error) {
-            console.error('Error al generar plantilla de SKUs:', error);
-            toast.error('No se pudo generar la plantilla.');
-        }
     };
 
     const handleSelectionFile = async (event) => {
@@ -261,8 +242,12 @@ export default function ProductCatalogSelector({
             const matchedSkus = importedSkus.filter(sku => knownSkuSet.has(sku));
             const missingSkus = importedSkus.filter(sku => !knownSkuSet.has(sku));
 
-            // Sustituye completamente la selección previa, incluso si ningún
-            // SKU del archivo existe en el catálogo actual.
+            if (matchedSkus.length === 0) {
+                toast.error('Ningún SKU del archivo existe en el catálogo actual.');
+                return;
+            }
+
+            // Sustituye completamente la selección previa.
             onReplaceSelection(matchedSkus);
             setCatalogSearch('');
 
@@ -283,10 +268,21 @@ export default function ProductCatalogSelector({
             setImportResult({
                 fileName: file.name,
                 selectedCount: matchedSkus.length,
-                missingCount: missingSkus.length,
-                missingSkus
+                missingCount: missingSkus.length
             });
-            setShowMissingModal(false);
+
+            toast.success(
+                `${matchedSkus.length} SKU${matchedSkus.length === 1 ? '' : 's'} cargado${matchedSkus.length === 1 ? '' : 's'}.`
+            );
+
+            if (missingSkus.length > 0) {
+                const preview = missingSkus.slice(0, 5).join(', ');
+                const remaining = missingSkus.length - 5;
+
+                toast.warning(
+                    `${missingSkus.length} SKU${missingSkus.length === 1 ? '' : 's'} no encontrado${missingSkus.length === 1 ? '' : 's'}: ${preview}${remaining > 0 ? ` y ${remaining} más` : ''}.`
+                );
+            }
         } catch (error) {
             console.error('Error al importar selección de productos:', error);
             toast.error('No se pudo leer el archivo. Verifica que no esté dañado.');
@@ -373,57 +369,33 @@ export default function ProductCatalogSelector({
                     className="hidden"
                 />
 
-                <div className="flex items-center gap-2 shrink-0">
-                    <button
-                        type="button"
-                        onClick={downloadTemplate}
-                        className="flex items-center justify-center gap-2 bg-white hover:bg-slate-100 border border-slate-200 text-slate-600 hover:text-slate-800 px-3 py-2 rounded-lg text-[10px] font-bold transition-all"
-                    >
-                        <Download size={13} />
-                        Descargar plantilla
-                    </button>
-
-                    <button
-                        type="button"
-                        onClick={openFilePicker}
-                        disabled={importingSelection || loadingCatalog}
-                        className="flex items-center justify-center gap-2 bg-white hover:bg-indigo-50 border border-slate-200 hover:border-indigo-200 text-slate-700 hover:text-indigo-600 px-3 py-2 rounded-lg text-[10px] font-bold transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                        {importingSelection ? (
-                            <Loader2 size={13} className="animate-spin" />
-                        ) : (
-                            <Upload size={13} />
-                        )}
-                        {importingSelection ? 'Procesando...' : 'Cargar selección'}
-                    </button>
-                </div>
+                <button
+                    type="button"
+                    onClick={openFilePicker}
+                    disabled={importingSelection || loadingCatalog}
+                    className="flex items-center justify-center gap-2 bg-white hover:bg-indigo-50 border border-slate-200 hover:border-indigo-200 text-slate-700 hover:text-indigo-600 px-3 py-2 rounded-lg text-[10px] font-bold transition-all disabled:opacity-50 disabled:cursor-not-allowed shrink-0"
+                >
+                    {importingSelection ? (
+                        <Loader2 size={13} className="animate-spin" />
+                    ) : (
+                        <Upload size={13} />
+                    )}
+                    {importingSelection ? 'Procesando...' : 'Cargar selección'}
+                </button>
             </div>
 
             {importResult && (
-                <div className="flex flex-wrap items-center justify-between gap-2 text-[10px] px-3 py-2 bg-emerald-50 border border-emerald-100 rounded-lg">
-                    <div className="flex flex-wrap items-center gap-x-2 gap-y-1 min-w-0">
-                        <span className="font-bold text-emerald-700 truncate max-w-[240px]">
-                            {importResult.fileName}
-                        </span>
-                        <span className="text-emerald-600">
-                            {importResult.selectedCount} seleccionados
-                        </span>
-                        {importResult.missingCount > 0 && (
-                            <span className="text-amber-600 font-semibold">
-                                {importResult.missingCount} no encontrados
-                            </span>
-                        )}
-                    </div>
-
+                <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[10px] px-3 py-2 bg-emerald-50 border border-emerald-100 rounded-lg">
+                    <span className="font-bold text-emerald-700 truncate max-w-[240px]">
+                        {importResult.fileName}
+                    </span>
+                    <span className="text-emerald-600">
+                        {importResult.selectedCount} seleccionados
+                    </span>
                     {importResult.missingCount > 0 && (
-                        <button
-                            type="button"
-                            onClick={() => setShowMissingModal(true)}
-                            title="Ver SKUs no encontrados"
-                            className="inline-flex items-center justify-center w-7 h-7 rounded-lg text-amber-600 hover:text-amber-700 hover:bg-amber-100 transition-colors shrink-0"
-                        >
-                            <Info size={15} />
-                        </button>
+                        <span className="text-amber-600 font-semibold">
+                            {importResult.missingCount} no encontrados
+                        </span>
                     )}
                 </div>
             )}
@@ -610,60 +582,6 @@ export default function ProductCatalogSelector({
                     })
                 )}
             </div>
-
-            {showMissingModal && importResult?.missingSkus?.length > 0 && (
-                <div
-                    className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 backdrop-blur-[2px] p-4"
-                    onClick={() => setShowMissingModal(false)}
-                >
-                    <div
-                        className="w-full max-w-lg bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden"
-                        onClick={(event) => event.stopPropagation()}
-                    >
-                        <div className="flex items-center justify-between gap-4 px-5 py-4 border-b border-slate-100">
-                            <div>
-                                <h4 className="text-sm font-bold text-slate-800">
-                                    SKUs no encontrados
-                                </h4>
-                                <p className="text-[11px] text-slate-500 mt-0.5">
-                                    {importResult.missingCount} SKU{importResult.missingCount === 1 ? '' : 's'} del archivo no existen en el catálogo actual.
-                                </p>
-                            </div>
-
-                            <button
-                                type="button"
-                                onClick={() => setShowMissingModal(false)}
-                                className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
-                            >
-                                <X size={16} />
-                            </button>
-                        </div>
-
-                        <div className="max-h-[360px] overflow-y-auto custom-scrollbar p-4">
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                                {importResult.missingSkus.map((sku) => (
-                                    <div
-                                        key={sku}
-                                        className="px-3 py-2 rounded-lg bg-amber-50 border border-amber-100 font-mono text-[11px] font-bold text-amber-700"
-                                    >
-                                        {sku}
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-
-                        <div className="flex justify-end px-5 py-3 bg-slate-50 border-t border-slate-100">
-                            <button
-                                type="button"
-                                onClick={() => setShowMissingModal(false)}
-                                className="px-4 py-2 rounded-lg bg-slate-800 hover:bg-slate-900 text-white text-[10px] font-bold transition-colors"
-                            >
-                                Cerrar
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
         </div>
     );
 }

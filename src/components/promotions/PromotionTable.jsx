@@ -2,7 +2,7 @@
 import { useState, useMemo } from 'react';
 import { api } from '@/lib/api';
 import { useReactTable, getCoreRowModel, getSortedRowModel, getFilteredRowModel, getPaginationRowModel, flexRender } from '@tanstack/react-table';
-import { Trash2, Edit, ChevronUp, ChevronDown, Search, X } from 'lucide-react';
+import { Trash2, Edit, ChevronUp, ChevronDown, Search } from 'lucide-react';
 
 // Deriva el status visual de una promoción a partir de 'active' y sus fechas.
 // - Inactiva: active = false (borrador, o pendiente de completar el wizard)
@@ -39,6 +39,72 @@ const StatusBadge = ({ promotion }) => {
     );
 };
 
+
+const isValidHexColor = (color) =>
+    /^#[0-9A-Fa-f]{6}$/.test(String(color || ''));
+
+const normalizeTags = (tags) => {
+    if (Array.isArray(tags)) return tags;
+
+    if (typeof tags === 'string') {
+        try {
+            const parsed = JSON.parse(tags);
+            return Array.isArray(parsed) ? parsed : [];
+        } catch {
+            return [];
+        }
+    }
+
+    return [];
+};
+
+const getContrastColor = (hexColor) => {
+    if (!isValidHexColor(hexColor)) return '#0f172a';
+
+    const hex = hexColor.replace('#', '');
+    const red = parseInt(hex.substring(0, 2), 16);
+    const green = parseInt(hex.substring(2, 4), 16);
+    const blue = parseInt(hex.substring(4, 6), 16);
+    const luminance = (red * 299 + green * 587 + blue * 114) / 1000;
+
+    return luminance > 150 ? '#0f172a' : '#ffffff';
+};
+
+const PromotionTags = ({ tags }) => {
+    const normalizedTags = normalizeTags(tags);
+
+    if (normalizedTags.length === 0) {
+        return <span className="text-slate-400">-</span>;
+    }
+
+    return (
+        <div className="flex flex-wrap gap-1.5">
+            {normalizedTags.map((tag, index) => {
+                const color = isValidHexColor(tag?.color)
+                    ? tag.color
+                    : '#f0f0f0';
+                const textColor = isValidHexColor(tag?.textcolor)
+                    ? tag.textcolor
+                    : getContrastColor(color);
+
+                return (
+                    <span
+                        key={`${tag?.label || 'tag'}-${index}`}
+                        className="inline-flex max-w-40 px-2.5 py-1 rounded-full text-[11px] font-bold border border-black/10 truncate"
+                        style={{
+                            backgroundColor: color,
+                            color: textColor
+                        }}
+                        title={tag?.label || ''}
+                    >
+                        {tag?.label || 'Sin nombre'}
+                    </span>
+                );
+            })}
+        </div>
+    );
+};
+
 export default function PromotionTable({ promotions, onRefresh, onEdit }) {
     const [sorting, setSorting] = useState([]);
     const [globalFilter, setGlobalFilter] = useState('');
@@ -56,6 +122,17 @@ export default function PromotionTable({ promotions, onRefresh, onEdit }) {
         { header: 'Nombre', accessorKey: 'name' },
         { header: 'Código', accessorKey: 'code' },
         { header: 'Descripción', accessorKey: 'description' },
+        {
+            header: 'Etiquetas',
+            id: 'tags',
+            accessorFn: row =>
+                normalizeTags(row.tags)
+                    .map(tag => tag?.label || '')
+                    .join(' '),
+            cell: ({ row }) => (
+                <PromotionTags tags={row.original.tags} />
+            )
+        },
         // { header: 'Tipo', accessorKey: 'type' },
         {
             header: 'Status',
@@ -174,6 +251,10 @@ export default function PromotionTable({ promotions, onRefresh, onEdit }) {
 
                             {p.description && (
                                 <div className="text-xs text-slate-500 line-clamp-2">{p.description}</div>
+                            )}
+
+                            {normalizeTags(p.tags).length > 0 && (
+                                <PromotionTags tags={p.tags} />
                             )}
 
                             <div className="flex justify-between text-[11px] text-slate-500 pt-1 border-t border-slate-100">
