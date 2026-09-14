@@ -1,6 +1,6 @@
 import Cookies from 'js-cookie';
 
-const BASE_URL = 'http://172.16.101.119:8008/api';
+const BASE_URL = 'https://promo-api.mepieldistribuidores.com.mx/api';
 
 async function request(endpoint, options = {}) {
     const token = Cookies.get('token');
@@ -38,7 +38,7 @@ async function request(endpoint, options = {}) {
     } catch (error) {
         return {
             error: true,
-            result: 'Error de conexión con el servidor de TI Center.'
+            result: 'Error de conexión con el servidor.'
         };
     }
 }
