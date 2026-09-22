@@ -35,11 +35,11 @@ export default function LoginPage() {
             {/* 1. Imagen de Fondo optimizada con Next.js */}
             <div className="absolute inset-0 -z-20">
                 <Image
-                    src="https://res.cloudinary.com/dc4tztadg/image/upload/q_auto/f_auto/v1780596624/2147932379_tanc0h.jpg"
+                    src="/images/background.svg"
                     alt="Fondo de compras en descuento"
-                    fill
+                    fill={true}
+                    className='object-cover object-center'
                     priority
-                    className="object-cover object-center"
                 />
             </div>
 
@@ -56,7 +56,7 @@ export default function LoginPage() {
                 {/* Contenedor del Logo */}
                 <div className="mb-8 flex justify-center">
                     <div className="relative mix-blend-multiply">
-                        <Image src="/images/promo_logo.png" alt="Logo" width={180} height={180} priority />
+                        <Image src="/images/logo.png" alt="Logo" width={180} height={180} priority />
                     </div>
                 </div>
 
