@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Cookies from 'js-cookie';
 import { api } from '@/lib/api';
 import { Lock, Mail, Loader2 } from 'lucide-react';
@@ -10,6 +10,13 @@ export default function LoginPage() {
     const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
     const [errorMsg, setErrorMsg] = useState('');
+
+    useEffect(() => {
+        const token = Cookies.get('token');
+        if (token) {
+            window.location.href = '/admin/promotions';
+        }
+    }, []);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -24,6 +31,7 @@ export default function LoginPage() {
         } else {
             // Guardar el token en la cookie (expira en 1 día)
             Cookies.set('token', response.result.token, { expires: 1 });
+
             // Redirigir al panel de promociones
             window.location.href = '/admin/promotions';
         }

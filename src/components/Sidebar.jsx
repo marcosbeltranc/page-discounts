@@ -17,6 +17,8 @@ export default function Sidebar({ onLogout }) {
         { name: 'Clientes', href: '/admin/customer', icon: User },
         { name: 'Grupos de Clientes', href: '/admin/customer-groups', icon: Users },
         { name: 'Promociones', href: '/admin/promotions', icon: Tag },
+        { name: 'Usuarios', href: '/admin/users', icon: Users },
+
         // { name: 'Productos Promocionales', href: '/admin/products', icon: Package },
     ];
 
