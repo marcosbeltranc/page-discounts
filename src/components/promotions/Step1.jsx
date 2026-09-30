@@ -556,7 +556,7 @@ export default function Step1({ data, onNext }) {
                                             <input
                                                 type="color"
                                                 aria-label={`Seleccionar color de fondo de etiqueta ${index + 1}`}
-                                                className="w-12 h-12 p-1 border rounded-xl bg-white cursor-pointer"
+                                                className="w-12 h-12 p-1  rounded-xl cursor-pointer"
                                                 value={previewColor}
                                                 onChange={(e) =>
                                                     updateTag(index, 'color', e.target.value)
@@ -581,7 +581,7 @@ export default function Step1({ data, onNext }) {
                                             <input
                                                 type="color"
                                                 aria-label={`Seleccionar color de texto de etiqueta ${index + 1}`}
-                                                className="w-12 h-12 p-1 border rounded-xl bg-white cursor-pointer"
+                                                className="w-12 h-12 p-1  rounded-xl cursor-pointer"
                                                 value={previewTextColor}
                                                 onChange={(e) =>
                                                     updateTag(index, 'textcolor', e.target.value)
@@ -604,7 +604,7 @@ export default function Step1({ data, onNext }) {
                                     <Field label="Vista previa">
                                         <div className="h-12 flex items-center">
                                             <span
-                                                className="inline-flex max-w-full items-center px-3 py-1.5 rounded-full text-xs font-bold border border-black/10 truncate"
+                                                className="inline-flex max-w-full items-center px-3 py-1.5 text-xs font-bold border border-black/10 rounded-md truncate"
                                                 style={{
                                                     backgroundColor: previewColor,
                                                     color: previewTextColor

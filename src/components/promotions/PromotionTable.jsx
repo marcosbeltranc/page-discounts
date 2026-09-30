@@ -90,7 +90,7 @@ const PromotionTags = ({ tags }) => {
                 return (
                     <span
                         key={`${tag?.label || 'tag'}-${index}`}
-                        className="inline-flex max-w-40 px-2.5 py-1 rounded-full text-[11px] font-bold border border-black/10 truncate"
+                        className="inline-flex max-w-40 px-2.5 py-1 rounded-md text-[11px] font-bold border border-black/10 truncate"
                         style={{
                             backgroundColor: color,
                             color: textColor
