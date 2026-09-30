@@ -25,11 +25,14 @@ export default function Step2({ promotionId, onNext, onBack, data }) {
         promotion_id: promotionId,
         user_group_id: '',
         product_group_id: '',
+        excluded_product_group_id: '',
         mix_products: false,
         product_id: '',
+        excluded_product_id: '',
     });
 
-    const [mode, setMode] = useState('sku'); // 'sku' o 'group'
+    const [mode, setMode] = useState('sku'); // 'sku' o 'group' para inclusión
+    const [exclusionMode, setExclusionMode] = useState('none'); // 'none', 'sku' o 'group' para exclusión
 
     const handleMixChange = (e) => {
         const isChecked = e.target.checked;
@@ -47,8 +50,10 @@ export default function Step2({ promotionId, onNext, onBack, data }) {
     };
 
     const [searchTerm, setSearchTerm] = useState('');
+    const [excludedSearchTerm, setExcludedSearchTerm] = useState('');
 
     const [showDropdown, setShowDropdown] = useState(false);
+    const [showExcludedDropdown, setShowExcludedDropdown] = useState(false);
 
     useEffect(() => {
         if (!promotionId) return;
@@ -80,17 +85,26 @@ export default function Step2({ promotionId, onNext, onBack, data }) {
             promotion_id: promotionId,
             user_group_id: '',
             product_group_id: '',
+            excluded_product_group_id: '',
             mix_products: false,
             product_id: '',
+            excluded_product_id: '',
         });
         // Limpiamos también los estados visuales del formulario
         setSearchTerm('');
+        setExcludedSearchTerm('');
         setMode('sku');
+        setExclusionMode('none');
         setShowDropdown(false);
+        setShowExcludedDropdown(false);
     };
 
     const filteredProducts = allProducts.filter(p =>
         p.sku.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+
+    const filteredExcludedProducts = allProducts.filter(p =>
+        p.sku.toLowerCase().includes(excludedSearchTerm.toLowerCase())
     );
 
     const handleSave = async () => {
@@ -98,7 +112,9 @@ export default function Step2({ promotionId, onNext, onBack, data }) {
             ...rule,
             mix_products: mode === 'group' ? rule.mix_products : false,
             product_group_id: mode === 'group' ? rule.product_group_id : null,
-            product_id: mode === 'sku' ? rule.product_id : null
+            product_id: mode === 'sku' ? rule.product_id : null,
+            excluded_product_group_id: exclusionMode === 'group' ? rule.excluded_product_group_id : null,
+            excluded_product_id: exclusionMode === 'sku' ? rule.excluded_product_id : null,
         };
 
         try {
@@ -134,46 +150,6 @@ export default function Step2({ promotionId, onNext, onBack, data }) {
         }
     };
 
-    // const handleSave = async () => {
-
-    //     const payload = { ...rule };
-
-    //     if (payload.mix_products) {
-    //         payload.product_id = null;
-    //     } else {
-    //         payload.product_group_id = null;
-    //     }
-
-    //     try {
-    //         if (rule.id) {
-    //             await api.put(
-    //                 `/promotion-rules/update/${rule.id}`,
-    //                 rule
-    //             );
-
-    //             setRules(
-    //                 rules.map(r =>
-    //                     r.id === rule.id ? rule : r
-    //                 )
-    //             );
-    //         } else {
-    //             const res = await api.post(
-    //                 '/promotion-rules/create',
-    //                 rule
-    //             );
-
-    //             setRules([
-    //                 ...rules,
-    //                 res.result
-    //             ]);
-    //         }
-
-    //         resetForm();
-    //     } catch (err) {
-    //         console.error(err);
-    //         alert('Error al guardar la regla');
-    //     }
-    // };
 
     const handleContinue = () => {
         if (rules.length === 0) {
@@ -225,6 +201,10 @@ export default function Step2({ promotionId, onNext, onBack, data }) {
                         g => g.id == r.product_group_id
                     );
 
+                    const epGroup = groups.products.find(
+                        g => g.id == r.excluded_product_group_id
+                    );
+
                     return (
                         <div
                             key={r.id}
@@ -246,7 +226,7 @@ export default function Step2({ promotionId, onNext, onBack, data }) {
                                 </div>
 
                                 <div className="text-sm text-slate-500">
-                                    Productos:
+                                    Productos Incluidos:
                                     <strong className="text-slate-700">
                                         {' '}
                                         {r.product_group_id
@@ -259,16 +239,21 @@ export default function Step2({ promotionId, onNext, onBack, data }) {
                                     </strong>
                                 </div>
 
-                                {/* <div className="text-sm text-slate-500">
-                                    Productos:
-                                    <strong className="text-slate-700">
-                                        {' '}
-                                        {r.mix_products
-                                            ? (pGroup ? pGroup.group : 'Todos')
-                                            : (allProducts.find(p => p.id == r.product_id)?.sku || 'Producto no encontrado')
-                                        }
-                                    </strong>
-                                </div> */}
+                                {(r.excluded_product_group_id || r.excluded_product_id) && (
+                                    <div className="text-sm text-rose-500">
+                                        Exclusiones:
+                                        <strong className="text-rose-700">
+                                            {' '}
+                                            {r.excluded_product_group_id
+                                                ? (epGroup ? epGroup.group : 'Grupo no encontrado')
+                                                : (r.excluded_product_id
+                                                    ? (allProducts.find(p => p.id == r.excluded_product_id)?.sku || 'Producto no encontrado')
+                                                    : 'Ninguna'
+                                                )
+                                            }
+                                        </strong>
+                                    </div>
+                                )}
                             </div>
 
                             <div className="flex gap-4">
@@ -282,6 +267,18 @@ export default function Step2({ promotionId, onNext, onBack, data }) {
 
                                         // 2. Si es SKU, buscamos el SKU para el input, de lo contrario limpiamos el buscador
                                         setSearchTerm(r.product_id ? (allProducts.find(p => p.id == r.product_id)?.sku || '') : '');
+
+                                        // 3. Determinar modo de exclusión
+                                        if (r.excluded_product_group_id) {
+                                            setExclusionMode('group');
+                                        } else if (r.excluded_product_id) {
+                                            setExclusionMode('sku');
+                                            setExcludedSearchTerm(allProducts.find(p => p.id == r.excluded_product_id)?.sku || '');
+                                        } else {
+                                            setExclusionMode('none');
+                                            setExcludedSearchTerm('');
+                                        }
+
                                     }}
                                     className="text-indigo-600 font-medium hover:underline"
                                 >
@@ -309,8 +306,8 @@ export default function Step2({ promotionId, onNext, onBack, data }) {
                 </h3>
 
 
-                {/* Selector 1: Tipo de selección */}
-                <Field label="Tipo de Selección">
+                {/* Selector 1: Tipo de selección INCLUSIÓN */}
+                <Field label="Tipo de Selección (Inclusión)">
                     <select
                         value={mode}
                         disabled={rule.mix_products} // Se bloquea si el checkbox está marcado
@@ -404,33 +401,81 @@ export default function Step2({ promotionId, onNext, onBack, data }) {
                     </select>
                 </Field>
 
+                {/* EXCLUSIONES */}
+                <div className="mt-6 pt-6 border-t border-slate-200">
+                    <h3 className="text-md font-bold text-slate-800 mb-4">Exclusiones (Opcional)</h3>
 
-                {/* <Field label="Grupo de Productos">
-                    <select
-                        value={rule.product_group_id}
-                        className="w-full p-3 border rounded-xl"
-                        onChange={(e) =>
-                            setRule({
-                                ...rule,
-                                product_group_id:
-                                    e.target.value
-                            })
-                        }
-                    >
-                        <option value="">
-                            Todos los productos
-                        </option>
+                    {/* Selector: Tipo de exclusión */}
+                    <Field label="Tipo de Selección (Exclusión)">
+                        <select
+                            value={exclusionMode}
+                            className="w-full p-3 border rounded-xl bg-white"
+                            onChange={(e) => {
+                                setExclusionMode(e.target.value);
+                                // Si cambia el modo, limpiar los valores
+                                if (e.target.value === 'none') {
+                                    setRule({ ...rule, excluded_product_group_id: '', excluded_product_id: '' });
+                                } else if (e.target.value === 'sku') {
+                                    setRule({ ...rule, excluded_product_group_id: '' });
+                                } else if (e.target.value === 'group') {
+                                    setRule({ ...rule, excluded_product_id: '' });
+                                    setExcludedSearchTerm('');
+                                }
+                            }}
+                        >
+                            <option value="none">Sin exclusiones</option>
+                            <option value="sku">Excluir producto individual (SKU)</option>
+                            <option value="group">Excluir grupo de productos</option>
+                        </select>
+                    </Field>
 
-                        {groups.products.map(g => (
-                            <option
-                                key={g.id}
-                                value={g.id}
+                    {exclusionMode === 'group' && (
+                        <Field label="Grupo de Productos a Excluir">
+                            <select
+                                value={rule.excluded_product_group_id || ''}
+                                className="w-full p-3 border rounded-xl"
+                                onChange={(e) => setRule({ ...rule, excluded_product_group_id: e.target.value })}
                             >
-                                {g.group}
-                            </option>
-                        ))}
-                    </select>
-                </Field> */}
+                                <option value="">Selecciona un grupo</option>
+                                {groups.products.map(g => <option key={g.id} value={g.id}>{g.group}</option>)}
+                            </select>
+                        </Field>
+                    )}
+
+                    {exclusionMode === 'sku' && (
+                        <Field label="Buscar Producto a Excluir por SKU">
+                            <div className="relative">
+                                <input
+                                    type="text"
+                                    placeholder="Escribe el SKU a excluir..."
+                                    className="w-full p-3 border rounded-xl mb-2"
+                                    value={excludedSearchTerm}
+                                    onChange={(e) => {
+                                        setExcludedSearchTerm(e.target.value);
+                                        setShowExcludedDropdown(true);
+                                    }}
+                                />
+                                {excludedSearchTerm && showExcludedDropdown && (
+                                    <div className="absolute z-10 w-full bg-white border rounded-xl shadow-lg max-h-40 overflow-y-auto">
+                                        {filteredExcludedProducts.map(p => (
+                                            <div
+                                                key={p.id}
+                                                className="p-3 hover:bg-rose-50 cursor-pointer text-sm"
+                                                onClick={() => {
+                                                    setRule({ ...rule, excluded_product_id: p.id });
+                                                    setExcludedSearchTerm(p.sku);
+                                                    setShowExcludedDropdown(false);
+                                                }}
+                                            >
+                                                <span className="font-bold text-rose-700">{p.sku}</span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        </Field>
+                    )}
+                </div>
 
                 <button
                     onClick={handleSave}
@@ -472,5 +517,4 @@ export default function Step2({ promotionId, onNext, onBack, data }) {
             </div>
         </div>
     );
-
 }
