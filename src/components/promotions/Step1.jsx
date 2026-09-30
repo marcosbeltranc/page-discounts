@@ -757,6 +757,34 @@ export default function Step1({ data, onNext }) {
                         />
                     </Field>
 
+                    <Field label="Cantidad Máxima">
+                        <input
+                            type="number"
+                            className="w-full p-3 border rounded-xl"
+                            value={form.max_quantity ?? ''}
+                            onChange={(e) =>
+                                setForm({
+                                    ...form,
+                                    max_quantity: e.target.value
+                                })
+                            }
+                        />
+                    </Field>
+
+                    <Field label="Multiplo">
+                        <input
+                            type="number"
+                            className="w-full p-3 border rounded-xl"
+                            value={form.multiplo ?? 1}
+                            onChange={(e) =>
+                                setForm({
+                                    ...form,
+                                    multiplo: e.target.value
+                                })
+                            }
+                        />
+                    </Field>
+
                     <Field label="Monto Mínimo">
                         <input
                             type="number"
