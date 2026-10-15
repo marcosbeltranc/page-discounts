@@ -21,7 +21,7 @@ const INITIAL_FORM = {
     min_amount: 0,
     min_quantity: 1,
     is_combinable: false,
-    include_tax: false,
+    include_tax: true,
     discount_type: 'percentage',
     discount_amount: 0,
     discount_limit: '',
@@ -720,6 +720,7 @@ export default function Step1({ data, onNext }) {
 
                 </div>
 
+                {/* Aplicar descuento sobre precios con impuestos  */}
                 <label className="flex items-center gap-3 text-sm">
                     <input
                         type="checkbox"

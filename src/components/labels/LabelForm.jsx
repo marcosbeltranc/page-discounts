@@ -21,6 +21,8 @@ const INITIAL_FORM = {
     text_color: '#0f172a',
     product_id: '',
     product_group_id: '',
+    excluded_product_id: '',         // <--- Nuevo
+    excluded_product_group_id: '',   // <--- Nuevo
     ranking: 0,
     is_active: true
 };
@@ -41,15 +43,20 @@ export default function LabelForm({ labelData, onCancel, onFinish }) {
     const isEdit = !!labelData?.id;
     const [form, setForm] = useState(INITIAL_FORM);
 
-    // Estados para la asignación
+    // Estados para la asignación y exclusión
     const [assignmentMode, setAssignmentMode] = useState('none'); // 'none', 'product', 'group'
+    const [exclusionMode, setExclusionMode] = useState('none');   // 'none', 'product', 'group'
+
     const [productGroups, setProductGroups] = useState([]);
     const [allProducts, setAllProducts] = useState([]);
     const [searchTerm, setSearchTerm] = useState('');
     const [showDropdown, setShowDropdown] = useState(false);
 
+    // Estados para búsqueda de exclusión por producto SKU
+    const [exclusionSearchTerm, setExclusionSearchTerm] = useState('');
+    const [showExclusionDropdown, setShowExclusionDropdown] = useState(false);
+
     useEffect(() => {
-        // Cargar recursos para asignación
         const fetchResources = async () => {
             try {
                 const [groupsRes, productsRes] = await Promise.all([
@@ -69,7 +76,9 @@ export default function LabelForm({ labelData, onCancel, onFinish }) {
         if (!labelData) {
             setForm(INITIAL_FORM);
             setAssignmentMode('none');
+            setExclusionMode('none');
             setSearchTerm('');
+            setExclusionSearchTerm('');
             return;
         }
 
@@ -80,6 +89,8 @@ export default function LabelForm({ labelData, onCancel, onFinish }) {
             text_color: labelData.text_color ?? '#0f172a',
             product_id: labelData.product_id ?? '',
             product_group_id: labelData.product_group_id ?? '',
+            excluded_product_id: labelData.excluded_product_id ?? '',
+            excluded_product_group_id: labelData.excluded_product_group_id ?? '',
             ranking: labelData.ranking ?? 0,
             is_active: labelData.is_active ?? true
         });
@@ -92,19 +103,34 @@ export default function LabelForm({ labelData, onCancel, onFinish }) {
         } else {
             setAssignmentMode('none');
         }
+
+        // Determinar modo de exclusión inicial
+        if (labelData.excluded_product_group_id) {
+            setExclusionMode('group');
+        } else if (labelData.excluded_product_id) {
+            setExclusionMode('product');
+        } else {
+            setExclusionMode('none');
+        }
     }, [labelData]);
 
-    // Establecer el searchTerm si estamos en edición y hay un producto asignado, 
-    // pero esperar a que allProducts esté cargado
     useEffect(() => {
         if (isEdit && form.product_id && allProducts.length > 0 && assignmentMode === 'product') {
             const prod = allProducts.find(p => p.id == form.product_id);
             if (prod) setSearchTerm(prod.sku);
         }
-    }, [isEdit, form.product_id, allProducts, assignmentMode]);
+        if (isEdit && form.excluded_product_id && allProducts.length > 0 && exclusionMode === 'product') {
+            const prod = allProducts.find(p => p.id == form.excluded_product_id);
+            if (prod) setExclusionSearchTerm(prod.sku);
+        }
+    }, [isEdit, form.product_id, form.excluded_product_id, allProducts, assignmentMode, exclusionMode]);
 
     const filteredProducts = allProducts.filter(p =>
         p.sku?.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+
+    const filteredExclusionProducts = allProducts.filter(p =>
+        p.sku?.toLowerCase().includes(exclusionSearchTerm.toLowerCase())
     );
 
     const handleSubmit = async (e) => {
@@ -117,6 +143,12 @@ export default function LabelForm({ labelData, onCancel, onFinish }) {
 
         if (!form.slug.trim()) {
             toast.error('El slug de la etiqueta es obligatorio');
+            return;
+        }
+
+        const slugRegex = /^[a-z0-9-_]+$/;
+        if (!slugRegex.test(form.slug)) {
+            toast.error('El slug solo permite letras minúsculas, números, guiones y guiones bajos');
             return;
         }
 
@@ -140,12 +172,13 @@ export default function LabelForm({ labelData, onCancel, onFinish }) {
             return;
         }
 
-
-        // Limpiar IDs según el modo de asignación
+        // Limpiar IDs según el modo de asignación y exclusión
         const payload = {
             ...form,
             product_id: assignmentMode === 'product' ? form.product_id || null : null,
             product_group_id: assignmentMode === 'group' ? form.product_group_id || null : null,
+            excluded_product_id: (assignmentMode === 'group' && exclusionMode === 'product') ? form.excluded_product_id || null : null,
+            excluded_product_group_id: (assignmentMode === 'group' && exclusionMode === 'group') ? form.excluded_product_group_id || null : null,
         };
 
         const url = isEdit ? `/labels/update/${labelData.id}` : '/labels/create';
@@ -196,9 +229,16 @@ export default function LabelForm({ labelData, onCancel, onFinish }) {
                             <input
                                 type="text"
                                 placeholder="ej-etiqueta-nueva"
-                                className="w-full p-3 border rounded-xl bg-white focus:border-indigo-500 outline-none"
+                                className="w-full p-3 border rounded-xl bg-white focus:border-indigo-500 outline-none font-mono text-sm"
                                 value={form.slug}
-                                onChange={(e) => setForm({ ...form, slug: e.target.value })}
+                                onChange={(e) => {
+                                    const sanitizedSlug = e.target.value
+                                        .toLowerCase()
+                                        .replace(/\s+/g, '-')
+                                        .replace(/[^a-z0-9-_]/g, '');
+
+                                    setForm({ ...form, slug: sanitizedSlug });
+                                }}
                             />
                         </Field>
                     </div>
@@ -258,43 +298,17 @@ export default function LabelForm({ labelData, onCancel, onFinish }) {
                 <div className="bg-indigo-50 border border-indigo-100 rounded-2xl p-5 space-y-4">
                     <h2 className="text-lg font-bold text-indigo-800 mb-2">Reglas de Asignación</h2>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {/* <Field label="Ranking (Prioridad)">
-                            <input
-                                type="number"
-                                className="w-full p-3 border rounded-xl bg-white focus:border-indigo-500 outline-none"
-                                value={form.ranking}
-                                onChange={(e) => setForm({ ...form, ranking: parseInt(e.target.value) || 0 })}
-                            />
-                            <p className="text-[10px] text-slate-500 mt-1">Mayor número = mayor prioridad visual</p>
-                        </Field> */}
-
-                        {/* <Field label="Estado">
-                            <div className="h-full flex items-center">
-                                <label className="flex items-center gap-3 cursor-pointer">
-                                    <input
-                                        type="checkbox"
-                                        className="w-5 h-5 text-indigo-600 rounded border-slate-300"
-                                        checked={form.is_active}
-                                        onChange={(e) => setForm({ ...form, is_active: e.target.checked })}
-                                    />
-                                    <span className="text-sm font-medium text-slate-700">
-                                        Etiqueta Activa
-                                    </span>
-                                </label>
-                            </div>
-                        </Field> */}
-                    </div>
-
                     <Field label="Tipo de Asignación">
                         <select
                             value={assignmentMode}
                             onChange={(e) => {
                                 setAssignmentMode(e.target.value);
                                 if (e.target.value === 'none') {
-                                    setForm({ ...form, product_id: '', product_group_id: '' });
+                                    setForm({ ...form, product_id: '', product_group_id: '', excluded_product_id: '', excluded_product_group_id: '' });
+                                    setExclusionMode('none');
                                 } else if (e.target.value === 'product') {
-                                    setForm({ ...form, product_group_id: '' });
+                                    setForm({ ...form, product_group_id: '', excluded_product_id: '', excluded_product_group_id: '' });
+                                    setExclusionMode('none');
                                 } else if (e.target.value === 'group') {
                                     setForm({ ...form, product_id: '' });
                                     setSearchTerm('');
@@ -309,18 +323,100 @@ export default function LabelForm({ labelData, onCancel, onFinish }) {
                     </Field>
 
                     {assignmentMode === 'group' && (
-                        <Field label="Seleccionar Grupo de Productos">
-                            <select
-                                value={form.product_group_id}
-                                className="w-full p-3 border rounded-xl bg-white focus:border-indigo-500 outline-none"
-                                onChange={(e) => setForm({ ...form, product_group_id: e.target.value })}
-                            >
-                                <option value="">Selecciona un grupo...</option>
-                                {productGroups.map(g => (
-                                    <option key={g.id} value={g.id}>{g.group || g.name}</option>
-                                ))}
-                            </select>
-                        </Field>
+                        <>
+                            <Field label="Seleccionar Grupo de Productos">
+                                <select
+                                    value={form.product_group_id}
+                                    className="w-full p-3 border rounded-xl bg-white focus:border-indigo-500 outline-none"
+                                    onChange={(e) => setForm({ ...form, product_group_id: e.target.value })}
+                                >
+                                    <option value="">Selecciona un grupo...</option>
+                                    {productGroups.map(g => (
+                                        <option key={g.id} value={g.id}>{g.group || g.name}</option>
+                                    ))}
+                                </select>
+                            </Field>
+
+                            {/* Sección de Exclusiones (Solo disponible cuando se asigna por Grupo) */}
+                            <div className="pt-2 border-t border-indigo-200/60 mt-4 space-y-4">
+                                <h3 className="text-sm font-bold text-indigo-900">Exclusiones (Opcional)</h3>
+
+                                <Field label="Tipo de Exclusión">
+                                    <select
+                                        value={exclusionMode}
+                                        onChange={(e) => {
+                                            setExclusionMode(e.target.value);
+                                            if (e.target.value === 'none') {
+                                                setForm({ ...form, excluded_product_id: '', excluded_product_group_id: '' });
+                                            } else if (e.target.value === 'product') {
+                                                setForm({ ...form, excluded_product_group_id: '' });
+                                            } else if (e.target.value === 'group') {
+                                                setForm({ ...form, excluded_product_id: '' });
+                                                setExclusionSearchTerm('');
+                                            }
+                                        }}
+                                        className="w-full p-3 border rounded-xl bg-white focus:border-indigo-500 outline-none text-sm"
+                                    >
+                                        <option value="none">Sin exclusiones</option>
+                                        <option value="product">Excluir Producto Específico (SKU)</option>
+                                        <option value="group">Excluir Grupo de Productos</option>
+                                    </select>
+                                </Field>
+
+                                {exclusionMode === 'group' && (
+                                    <Field label="Seleccionar Grupo a Excluir">
+                                        <select
+                                            value={form.excluded_product_group_id}
+                                            className="w-full p-3 border rounded-xl bg-white focus:border-indigo-500 outline-none text-sm"
+                                            onChange={(e) => setForm({ ...form, excluded_product_group_id: e.target.value })}
+                                        >
+                                            <option value="">Selecciona un grupo a excluir...</option>
+                                            {productGroups.map(g => (
+                                                <option key={g.id} value={g.id}>{g.group || g.name}</option>
+                                            ))}
+                                        </select>
+                                    </Field>
+                                )}
+
+                                {exclusionMode === 'product' && (
+                                    <Field label="Buscar Producto a Excluir por SKU">
+                                        <div className="relative">
+                                            <input
+                                                type="text"
+                                                placeholder="Escribe el SKU a excluir..."
+                                                className="w-full p-3 border rounded-xl bg-white focus:border-indigo-500 outline-none text-sm"
+                                                value={exclusionSearchTerm}
+                                                onChange={(e) => {
+                                                    setExclusionSearchTerm(e.target.value);
+                                                    setShowExclusionDropdown(true);
+                                                    if (e.target.value === '') setForm({ ...form, excluded_product_id: '' });
+                                                }}
+                                            />
+                                            {exclusionSearchTerm && showExclusionDropdown && (
+                                                <div className="absolute z-10 w-full bg-white border rounded-xl shadow-lg max-h-40 overflow-y-auto mt-1">
+                                                    {filteredExclusionProducts.length > 0 ? filteredExclusionProducts.map(p => (
+                                                        <div
+                                                            key={p.id}
+                                                            className="p-3 hover:bg-rose-50 cursor-pointer text-sm transition-colors"
+                                                            onClick={() => {
+                                                                setForm({ ...form, excluded_product_id: p.id });
+                                                                setExclusionSearchTerm(p.sku);
+                                                                setShowExclusionDropdown(false);
+                                                            }}
+                                                        >
+                                                            <span className="font-bold text-rose-700">{p.sku}</span>
+                                                            <span className="ml-2 text-slate-500 text-xs">{p.name}</span>
+                                                        </div>
+                                                    )) : (
+                                                        <div className="p-3 text-sm text-slate-500">No se encontraron productos</div>
+                                                    )}
+                                                </div>
+                                            )}
+                                        </div>
+                                    </Field>
+                                )}
+                            </div>
+                        </>
                     )}
 
                     {assignmentMode === 'product' && (
